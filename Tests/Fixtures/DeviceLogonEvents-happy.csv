@@ -1,0 +1,4 @@
+Timestamp,DeviceId,DeviceName,ActionType,LogonType,AccountDomain,AccountName,AccountSid,RemoteIP,RemoteDeviceName,FailureReason,IsLocalAdmin,InitiatingProcessFileName,InitiatingProcessCommandLine,ReportId
+2026-08-10T08:01:12.000Z,a1b2c3d4e5f6,WKSTN-FIN-014,LogonSuccess,Interactive,CORP,jsmith,S-1-5-21-1111111111-2222222222-3333333333-1001,,,,False,winlogon.exe,C:\Windows\System32\winlogon.exe,900123467
+2026-08-10T08:02:30.500Z,a1b2c3d4e5f6,WKSTN-FIN-014,LogonFailed,Network,CORP,svc-backup,S-1-5-21-1111111111-2222222222-3333333333-2044,10.20.30.99,BKP-SRV02,Unknown user name or bad password,False,lsass.exe,C:\Windows\System32\lsass.exe,900123468
+2026-08-10T08:03:01.220Z,a1b2c3d4e5f6,WKSTN-FIN-014,LogonSuccess,Interactive,CORP,itadmin,S-1-5-21-1111111111-2222222222-3333333333-1002,,,,True,winlogon.exe,C:\Windows\System32\winlogon.exe,900123469

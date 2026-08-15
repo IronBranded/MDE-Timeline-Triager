@@ -1,0 +1,41 @@
+{
+  "MappingVersion": "1.0.0",
+  "Note": "Requirement #2: correlation between MDE ActionType values and standard Windows Event IDs / Sysmon events, scoped to the ActionTypes this module's fixtures and detection rules actually reference plus their immediate, well-established companions -- not an exhaustive enumeration of every ActionType MDE can emit, which numbers in the hundreds and is not independently verifiable from public documentation with confidence. Windows Security Event IDs and Sysmon Event IDs referenced here are stable, long-established values (Sysmon's ID scheme in particular has not changed since Sysmon v6), verified against current Microsoft/Sysinternals documentation and community references rather than assumed from training data.",
+  "Mappings": {
+    "DeviceProcessEvents": {
+      "ProcessCreated": { "WindowsEventId": "4688", "WindowsEventName": "A new process has been created", "SysmonEventId": "1", "SysmonEventName": "Process creation" }
+    },
+    "DeviceNetworkEvents": {
+      "ConnectionSuccess": { "WindowsEventId": null, "WindowsEventName": null, "SysmonEventId": "3", "SysmonEventName": "Network connection" },
+      "ConnectionFailed": { "WindowsEventId": null, "WindowsEventName": null, "SysmonEventId": "3", "SysmonEventName": "Network connection (failed)" },
+      "InboundConnectionAccepted": { "WindowsEventId": null, "WindowsEventName": null, "SysmonEventId": "3", "SysmonEventName": "Network connection" },
+      "ListeningConnectionCreated": { "WindowsEventId": null, "WindowsEventName": null, "SysmonEventId": "3", "SysmonEventName": "Network connection" }
+    },
+    "DeviceFileEvents": {
+      "FileCreated": { "WindowsEventId": "4663", "WindowsEventName": "An attempt was made to access an object (with Object Access auditing enabled)", "SysmonEventId": "11", "SysmonEventName": "FileCreate" },
+      "FileModified": { "WindowsEventId": "4663", "WindowsEventName": "An attempt was made to access an object", "SysmonEventId": "2", "SysmonEventName": "A process changed a file creation time" },
+      "FileRenamed": { "WindowsEventId": "4663", "WindowsEventName": "An attempt was made to access an object", "SysmonEventId": "11", "SysmonEventName": "FileCreate (target of rename)" },
+      "FileDeleted": { "WindowsEventId": "4660", "WindowsEventName": "An object was deleted", "SysmonEventId": "23", "SysmonEventName": "FileDelete (a file delete was detected)" }
+    },
+    "DeviceRegistryEvents": {
+      "RegistryValueSet": { "WindowsEventId": "4657", "WindowsEventName": "A registry value was modified", "SysmonEventId": "13", "SysmonEventName": "RegistryEvent (Value Set)" },
+      "RegistryKeyCreated": { "WindowsEventId": "4657", "WindowsEventName": "A registry value was modified", "SysmonEventId": "12", "SysmonEventName": "RegistryEvent (Object create and delete)" },
+      "RegistryValueDeleted": { "WindowsEventId": "4657", "WindowsEventName": "A registry value was modified", "SysmonEventId": "12", "SysmonEventName": "RegistryEvent (Object create and delete)" },
+      "RegistryKeyDeleted": { "WindowsEventId": "4657", "WindowsEventName": "A registry value was modified", "SysmonEventId": "12", "SysmonEventName": "RegistryEvent (Object create and delete)" }
+    },
+    "DeviceLogonEvents": {
+      "LogonSuccess": { "WindowsEventId": "4624", "WindowsEventName": "An account was successfully logged on", "SysmonEventId": null, "SysmonEventName": null },
+      "LogonFailed": { "WindowsEventId": "4625", "WindowsEventName": "An account failed to log on", "SysmonEventId": null, "SysmonEventName": null }
+    },
+    "DeviceImageLoadEvents": {
+      "ImageLoaded": { "WindowsEventId": null, "WindowsEventName": null, "SysmonEventId": "7", "SysmonEventName": "Image loaded" }
+    },
+    "DeviceEvents": {
+      "AntivirusScanCompleted": { "WindowsEventId": "1001", "WindowsEventName": "Windows Defender Antivirus scan finished (Microsoft-Windows-Windows Defender log)", "SysmonEventId": null, "SysmonEventName": null },
+      "AsrRuleAudited": { "WindowsEventId": "1122", "WindowsEventName": "Attack Surface Reduction rule audited (Microsoft-Windows-Windows Defender log)", "SysmonEventId": null, "SysmonEventName": null },
+      "AsrRuleBlocked": { "WindowsEventId": "1121", "WindowsEventName": "Attack Surface Reduction rule blocked (Microsoft-Windows-Windows Defender log)", "SysmonEventId": null, "SysmonEventName": null },
+      "AmsiScriptDetection": { "WindowsEventId": null, "WindowsEventName": null, "SysmonEventId": null, "SysmonEventName": null },
+      "ProcessCreated": { "WindowsEventId": "4688", "WindowsEventName": "A new process has been created", "SysmonEventId": "1", "SysmonEventName": "Process creation" }
+    }
+  }
+}

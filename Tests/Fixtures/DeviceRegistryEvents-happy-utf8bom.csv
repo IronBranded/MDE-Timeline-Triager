@@ -1,0 +1,3 @@
+﻿Timestamp,DeviceId,DeviceName,ActionType,RegistryKey,RegistryValueType,RegistryValueName,RegistryValueData,PreviousRegistryValueData,InitiatingProcessFileName,InitiatingProcessCommandLine,InitiatingProcessId,ReportId
+2026-08-10T14:10:05.330Z,a1b2c3d4e5f6,WKSTN-FIN-014,RegistryValueSet,HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run,String,CorpVPNClient,C:\Program Files\CorpVPN\vpnclient.exe -silent,,msiexec.exe,C:\Windows\System32\msiexec.exe /i CorpVPN.msi,4801,900123465
+2026-08-10T14:10:55.001Z,a1b2c3d4e5f6,WKSTN-FIN-014,RegistryValueSet,HKEY_CURRENT_USER\Software\Contoso\Inventory,DWORD,LastScanEpoch,1786453200,1786366800,inventory-scan.ps1,powershell.exe -File C:\ProgramData\CorpIT\scripts\inventory-scan.ps1,4602,900123466

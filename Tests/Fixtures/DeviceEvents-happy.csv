@@ -1,0 +1,3 @@
+Timestamp,DeviceId,DeviceName,ActionType,FileName,FolderPath,SHA1,RegistryKey,RegistryValueData,RemoteUrl,RemoteIP,ProcessId,ProcessCommandLine,ProcessTokenElevation,InitiatingProcessFileName,InitiatingProcessCommandLine,ReportId
+2026-08-10T14:13:00.000Z,a1b2c3d4e5f6,WKSTN-FIN-014,AntivirusScanCompleted,,,,,,,,,,,MsMpEng.exe,C:\ProgramData\Microsoft\Windows Defender\Platform\MsMpEng.exe,900123472
+2026-08-10T14:13:20.400Z,a1b2c3d4e5f6,WKSTN-FIN-014,AsrRuleAudited,inventory-scan.ps1,C:\ProgramData\CorpIT\scripts,3f786850e387550fdab836ed7e6dc881de23001b,,,,,4602,powershell.exe -File C:\ProgramData\CorpIT\scripts\inventory-scan.ps1,TokenElevationTypeLimited,MsMpEng.exe,C:\ProgramData\Microsoft\Windows Defender\Platform\MsMpEng.exe,900123473

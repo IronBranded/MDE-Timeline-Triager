@@ -1,0 +1,88 @@
+name: PowerShell Module CI
+
+# This workflow exists specifically to close the two gaps the module's own README and
+# CHANGELOG document as unreachable in the environment it was built in: the real Pester
+# test runner (5.x/6.x need a dotnet SDK to build from source, unavailable there) and real
+# PSScriptAnalyzer (always compiled, never had a pure-PowerShell version to fall back to --
+# checked across its version history). GitHub-hosted runners have PowerShell Gallery access,
+# so both can install and run for real here. Everything in Tests/Invoke-ManualValidation.ps1
+# and Tests/Invoke-ManualLint.ps1 was built as a substitute for exactly this -- once this
+# workflow runs, those substitutes stay useful for local/offline work but stop being the
+# only evidence of correctness.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            shell: powershell
+            label: "Windows PowerShell 5.1"
+          - os: windows-latest
+            shell: pwsh
+            label: "PowerShell 7+ (Windows)"
+          - os: ubuntu-latest
+            shell: pwsh
+            label: "PowerShell 7+ (Linux)"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Pester and PSScriptAnalyzer
+        shell: ${{ matrix.shell }}
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser
+
+      - name: Import module (manifest + clean import sanity check)
+        shell: ${{ matrix.shell }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Test-ModuleManifest -Path ./MDETimelineTriage.psd1 | Out-Null
+          Import-Module ./MDETimelineTriage.psd1 -Force -ErrorAction Stop
+          $cmds = (Get-Command -Module MDETimelineTriage).Name | Sort-Object
+          $expected = @('ConvertFrom-MDEEncodedCommand','Get-MDEDetectionCatalog','Import-MDETimeline','Invoke-MDEDetection','Invoke-MDETriage','New-MDEReport','Test-MDEBaseline')
+          $diff = Compare-Object $cmds $expected
+          if ($diff) { throw "Exported cmdlet surface does not match the spec's closed 7-cmdlet list: $($diff | Out-String)" }
+
+      - name: Run Pester test suite (requirement #12)
+        shell: ${{ matrix.shell }}
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = './Tests'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = "./TestResults-${{ matrix.os }}-${{ matrix.shell }}.xml"
+          Invoke-Pester -Configuration $config
+
+      - name: Run PSScriptAnalyzer (requirement #13)
+        shell: ${{ matrix.shell }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $results = Invoke-ScriptAnalyzer -Path @('./Public', './Private') -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          $results += Invoke-ScriptAnalyzer -Path . -Settings ./PSScriptAnalyzerSettings.psd1
+          if ($results) {
+            $results | Format-Table -AutoSize | Out-String | Write-Host
+            throw "PSScriptAnalyzer found $($results.Count) issue(s). Per requirement #13, any deliberate suppression needs an inline justification comment and an entry in PSScriptAnalyzerSettings.psd1's ExcludeRules -- not a blanket disable."
+          }
+          Write-Host "PSScriptAnalyzer: clean."
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.shell }}
+          path: TestResults-*.xml

@@ -1,0 +1,31 @@
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+
+# PowerShell / module build artifacts
+bin/
+obj/
+*.nupkg
+
+# Local Pester/PSScriptAnalyzer downloads, if replicating this repo's own
+# "no PowerShell Gallery access" workaround locally (see README.md's
+# "Getting Pester Running Without the PowerShell Gallery")
+Pester-*/
+*.tar.gz
+
+# Report output, if generated into the repo directory by mistake
+# (Invoke-MDETriage/New-MDEReport always require an explicit -OutputPath,
+# but this guards against accidental in-place runs)
+/out/
+/output/
+MDETimelineTriage-Report.html
+MDETimelineTriage-Findings.csv
+
+# Merge artifacts
+*.orig
+*.bak

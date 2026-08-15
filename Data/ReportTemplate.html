@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__REPORT_TITLE__</title>
+<style>
+__DATATABLES_CSS__
+:root {
+  --color-critical: #b91c1c; --color-high: #ea580c; --color-medium: #ca8a04;
+  --color-low: #2563eb; --color-informational: #6b7280;
+}
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; }
+header.report-header { background: #1e293b; color: #fff; padding: 18px 24px; }
+header.report-header h1 { margin: 0 0 10px 0; font-size: 1.35rem; }
+.manifest { font-size: 0.82rem; color: #cbd5e1; display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; }
+.manifest dt { font-weight: 600; color: #94a3b8; }
+.manifest dd { margin: 0; word-break: break-all; }
+nav.tabs { display: flex; gap: 2px; background: #fff; border-bottom: 2px solid #e2e8f0; padding: 0 24px; overflow-x: auto; }
+nav.tabs button { padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: 0.92rem; color: #64748b; border-bottom: 3px solid transparent; white-space: nowrap; }
+nav.tabs button.active { color: #1e293b; font-weight: 600; border-bottom-color: #2563eb; }
+main { padding: 18px 24px 40px 24px; max-width: 1400px; margin: 0 auto; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.summary-cards { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.summary-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 18px; min-width: 110px; }
+.summary-card .count { font-size: 1.7rem; font-weight: 700; line-height: 1.1; }
+.summary-card .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+.sev-critical { color: var(--color-critical); } .sev-high { color: var(--color-high); }
+.sev-medium { color: var(--color-medium); } .sev-low { color: var(--color-low); }
+.sev-informational { color: var(--color-informational); }
+.badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 0.74rem; font-weight: 600; color: #fff; white-space: nowrap; }
+.badge-critical { background: var(--color-critical); } .badge-high { background: var(--color-high); }
+.badge-medium { background: var(--color-medium); } .badge-low { background: var(--color-low); }
+.badge-informational { background: var(--color-informational); }
+.confidence-badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 0.74rem; border: 1px solid #94a3b8; color: #475569; white-space: nowrap; }
+.overridden-flag { color: var(--color-critical); font-weight: 600; font-size: 0.78rem; }
+.notice-banner { padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 0.87rem; }
+.notice-warn { background: #fef3c7; border: 1px solid #f59e0b; color: #78350f; }
+.notice-info { background: #dbeafe; border: 1px solid #3b82f6; color: #1e3a5f; }
+.viz-container { width: 100%; min-height: 640px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; overflow: auto; }
+.viz-empty { padding: 40px; text-align: center; color: #94a3b8; }
+.incident-overview { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; margin-bottom: 18px; }
+.incident-overview h2 { margin: 0 0 12px 0; font-size: 1.05rem; }
+.timeframe-row { color: #475569; font-size: 0.88rem; margin-bottom: 14px; }
+.timeframe-row strong { color: #1e293b; }
+.goalpost-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.goalpost { flex: 1; min-width: 220px; border-radius: 8px; padding: 10px 14px; border: 1px solid; }
+.goalpost-left { background: #fef2f2; border-color: #fecaca; }
+.goalpost-right { background: #eff6ff; border-color: #bfdbfe; }
+.goalpost-empty { background: #f8fafc; border-color: #e2e8f0; }
+.goalpost-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: #64748b; margin-bottom: 2px; }
+.goalpost-value { font-size: 0.98rem; font-weight: 600; color: #1e293b; }
+.goalpost-sub { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+.goalpost-note { font-size: 0.72rem; color: #94a3b8; margin-top: 4px; font-style: italic; }
+.alert-timeline { list-style: none; margin: 0; padding: 0; }
+.alert-timeline li { padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
+.alert-timeline li:last-child { border-bottom: none; }
+.exclusion-note { font-size: 0.85rem; color: #475569; margin-top: 6px; }
+.exclusion-list { margin: 6px 0 0 0; padding-left: 18px; font-size: 0.82rem; color: #64748b; }
+.incident-subhead { font-size: 0.85rem; font-weight: 600; color: #334155; margin: 14px 0 6px 0; }
+.node text { font-size: 11px; fill: #1e293b; }
+.link { fill: none; stroke: #cbd5e1; stroke-width: 1.5px; }
+.tooltip { position: absolute; background: #1e293b; color: #fff; padding: 8px 10px; border-radius: 6px; font-size: 0.78rem; pointer-events: none; max-width: 340px; z-index: 1000; line-height: 1.4; }
+table.dataTable tbody tr.sev-row-critical { background-color: #fee2e2 !important; }
+table.dataTable tbody tr.sev-row-high { background-color: #ffedd5 !important; }
+table.dataTable tbody tr.sev-row-medium { background-color: #fef9c3 !important; }
+table.dataTable tbody tr.sev-row-low { background-color: #eff6ff !important; }
+table.dataTable { font-size: 0.85rem; }
+footer.report-footer { text-align: center; padding: 20px; color: #94a3b8; font-size: 0.78rem; }
+</style>
+</head>
+<body>
+<header class="report-header">
+<h1>MDE Timeline Triage Report</h1>
+<dl class="manifest">
+<dt>Source file</dt><dd>__SOURCE_PATH__</dd>
+<dt>SHA-256</dt><dd>__SOURCE_HASH__</dd>
+<dt>Processed</dt><dd>__PROCESSING_TIMESTAMP__ UTC</dd>
+<dt>Module version</dt><dd>__MODULE_VERSION__</dd>
+<dt>Findings</dt><dd>__FINDING_COUNT_SUMMARY__</dd>
+</dl>
+</header>
+<nav class="tabs">
+<button class="tab-btn active" data-tab="tab-summary">Executive Summary</button>
+<button class="tab-btn" data-tab="tab-table">Findings Table</button>
+<button class="tab-btn" data-tab="tab-tree">Process Tree</button>
+<button class="tab-btn" data-tab="tab-network">Network Graph</button>
+<button class="tab-btn" data-tab="tab-swimlane">Swimlane</button>
+</nav>
+<main>
+__REDACTION_BANNER__
+__SIZE_THRESHOLD_BANNER__
+<section id="tab-summary" class="tab-panel active">
+__INCIDENT_OVERVIEW__
+<div class="summary-cards">
+__SUMMARY_CARDS__
+</div>
+<p style="color:#64748b; font-size:0.85rem;">Timestamps throughout this report are UTC unless a separate "(Local)" column/value is shown, always explicitly labeled with its timezone.__LOCAL_TIME_NOTE__</p>
+</section>
+<section id="tab-table" class="tab-panel">
+<table id="findingsTable" class="display" style="width:100%"></table>
+</section>
+<section id="tab-tree" class="tab-panel">
+<div id="treeViz" class="viz-container"></div>
+</section>
+<section id="tab-network" class="tab-panel">
+<div id="networkViz" class="viz-container"></div>
+</section>
+<section id="tab-swimlane" class="tab-panel">
+<div id="swimlaneViz" class="viz-container"></div>
+</section>
+</main>
+<footer class="report-footer">Generated by MDETimelineTriage __MODULE_VERSION__. No telemetry, phone-home, or auto-upload behavior. This file is self-contained and safe to view offline.</footer>
+
+<script type="application/json" id="report-meta">__REPORT_META_JSON__</script>
+<script type="application/json" id="findings-data">__FINDINGS_JSON__</script>
+<script type="application/json" id="tree-data">__TREE_JSON__</script>
+<script type="application/json" id="network-data">__NETWORK_JSON__</script>
+
+<script>
+__D3_JS__
+</script>
+<script>
+__DATATABLES_JS__
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var meta = JSON.parse(document.getElementById('report-meta').textContent);
+  var findingsData = JSON.parse(document.getElementById('findings-data').textContent);
+  var treeData = JSON.parse(document.getElementById('tree-data').textContent);
+  var networkData = JSON.parse(document.getElementById('network-data').textContent);
+
+  var severityColor = { Critical: '#b91c1c', High: '#ea580c', Medium: '#ca8a04', Low: '#2563eb', Informational: '#6b7280' };
+
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      onTabShown(btn.dataset.tab);
+    });
+  });
+
+  var tooltip = d3.select('body').append('div').attr('class', 'tooltip').style('opacity', 0).style('position', 'absolute');
+  function showTooltip(event, html) {
+    tooltip.style('opacity', 1).html(html)
+      .style('left', (event.pageX + 12) + 'px')
+      .style('top', (event.pageY + 12) + 'px');
+  }
+  function hideTooltip() {
+    tooltip.style('opacity', 0);
+  }
+
+  function severityBadge(value) {
+    var cls = 'badge-' + String(value).toLowerCase();
+    return '<span class="badge ' + cls + '">' + value + '</span>';
+  }
+  function confidenceBadge(value) {
+    return '<span class="confidence-badge">' + value + '</span>';
+  }
+
+  var dtColumns = [
+    { data: 'TimestampUtcDisplay', title: 'Timestamp (UTC)' }
+  ];
+  if (meta.hasLocalTime) {
+    dtColumns.push({ data: 'TimestampLocalDisplay', title: 'Timestamp (Local)' });
+  }
+  dtColumns.push(
+    {
+      data: 'CombinedSeverity', title: 'Severity',
+      render: function (d, type) { return type === 'display' ? severityBadge(d) : d; }
+    },
+    { data: 'CombinedScore', visible: false, searchable: false },
+    {
+      data: 'Confidence', title: 'Confidence',
+      render: function (d, type) { return type === 'display' ? confidenceBadge(d) : d; }
+    },
+    { data: 'RuleName', title: 'Rule' },
+    { data: 'Tactic', title: 'Tactic' },
+    { data: 'TechniqueIdDisplay', title: 'Technique' },
+    { data: 'DeviceName', title: 'Device' },
+    {
+      data: 'Explanation', title: 'Explanation',
+      render: function (d, type, row) {
+        if (type !== 'display') { return d; }
+        var overridden = row.BaselineExclusionOverridden ? '<div class="overridden-flag">Survived baseline exclusion (severity too high to suppress)</div>' : '';
+        var coOccur = row.CoOccurringFindingsDisplay ? '<div style="color:#64748b;font-size:0.78rem;margin-top:2px;">Co-occurs with: ' + row.CoOccurringFindingsDisplay + '</div>' : '';
+        return d + overridden + coOccur;
+      }
+    },
+    { data: 'SourceTable', title: 'Table' },
+    { data: 'EventIdMappingDisplay', title: 'Native Event ID' }
+  );
+
+  var severityColIndex = -1, scoreColIndex = -1;
+  dtColumns.forEach(function (c, i) {
+    if (c.data === 'CombinedSeverity') { severityColIndex = i; }
+    if (c.data === 'CombinedScore') { scoreColIndex = i; }
+  });
+
+  var dtInstance = null;
+  function initTable() {
+    if (dtInstance || !findingsData.length) { return; }
+    dtInstance = new DataTable('#findingsTable', {
+      data: findingsData,
+      columns: dtColumns,
+      columnDefs: [{ targets: severityColIndex, orderData: [scoreColIndex] }],
+      order: [[scoreColIndex, 'desc']],
+      pageLength: 25,
+      lengthMenu: [10, 25, 50, 100],
+      createdRow: function (row, data) {
+        row.classList.add('sev-row-' + String(data.CombinedSeverity).toLowerCase());
+      }
+    });
+  }
+  if (!findingsData.length) {
+    document.getElementById('tab-table').innerHTML = '<div class="viz-empty">No findings to display.</div>';
+  }
+
+  var treeRendered = false;
+  function renderTree() {
+    if (treeRendered) { return; }
+    treeRendered = true;
+    var container = document.getElementById('treeViz');
+    if (!treeData || !treeData.Children || !treeData.Children.length) {
+      container.innerHTML = '<div class="viz-empty">No process lineage reconstructed for the displayed findings.</div>';
+      return;
+    }
+    var width = container.clientWidth || 900;
+    var root = d3.hierarchy(treeData, function (d) { return d.Children; });
+    var nodeCount = root.descendants().length;
+    var height = Math.max(400, nodeCount * 26 + 60);
+    var treeLayout = d3.tree().size([height - 60, width - 260]);
+    treeLayout(root);
+
+    var svg = d3.select('#treeViz').append('svg').attr('width', width).attr('height', height);
+    var g = svg.append('g').attr('transform', 'translate(140,30)');
+
+    g.selectAll('.link')
+      .data(root.links())
+      .join('path')
+      .attr('class', 'link')
+      .attr('d', d3.linkHorizontal().x(function (d) { return d.y; }).y(function (d) { return d.x; }));
+
+    var node = g.selectAll('.node')
+      .data(root.descendants())
+      .join('g')
+      .attr('class', 'node')
+      .attr('transform', function (d) { return 'translate(' + d.y + ',' + d.x + ')'; });
+
+    node.append('circle')
+      .attr('r', 6)
+      .attr('fill', function (d) { return severityColor[d.data.Severity] || '#94a3b8'; })
+      .attr('stroke', '#1e293b')
+      .attr('stroke-width', 1)
+      .on('mouseover', function (event, d) {
+        var html = '<strong>' + d.data.Name + '</strong><br>PID ' + d.data.ProcessId + '<br>Severity: ' + d.data.Severity;
+        if (d.data.RuleIds && d.data.RuleIds.length) { html += '<br>Rules: ' + d.data.RuleIds.join(', '); }
+        showTooltip(event, html);
+      })
+      .on('mouseout', hideTooltip);
+
+    node.append('text')
+      .attr('dy', 3)
+      .attr('x', function (d) { return d.children ? -10 : 10; })
+      .attr('text-anchor', function (d) { return d.children ? 'end' : 'start'; })
+      .text(function (d) { return d.data.Name; });
+  }
+
+  var networkRendered = false;
+  function renderNetwork() {
+    if (networkRendered) { return; }
+    networkRendered = true;
+    var container = document.getElementById('networkViz');
+    if (!networkData || !networkData.Nodes || !networkData.Nodes.length) {
+      container.innerHTML = '<div class="viz-empty">No network/logon findings among the displayed set to correlate.</div>';
+      return;
+    }
+    var width = container.clientWidth || 900;
+    var height = 640;
+    var svg = d3.select('#networkViz').append('svg').attr('width', width).attr('height', height);
+
+    var nodesCopy = networkData.Nodes.map(function (n) { return Object.assign({}, n); });
+    var linksCopy = networkData.Edges.map(function (e) { return { source: e.Source, target: e.Target, RuleId: e.RuleId }; });
+
+    var simulation = d3.forceSimulation(nodesCopy)
+      .force('link', d3.forceLink(linksCopy).id(function (d) { return d.Id; }).distance(130))
+      .force('charge', d3.forceManyBody().strength(-240))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collide', d3.forceCollide(28));
+
+    var link = svg.append('g').selectAll('line').data(linksCopy).join('line').attr('class', 'link');
+
+    var node = svg.append('g').selectAll('circle').data(nodesCopy).join('circle')
+      .attr('r', function (d) { return d.Type === 'Host' ? 11 : 8; })
+      .attr('fill', function (d) { return severityColor[d.Severity] || '#94a3b8'; })
+      .attr('stroke', '#1e293b')
+      .attr('stroke-width', 1)
+      .on('mouseover', function (event, d) { showTooltip(event, '<strong>' + d.Id + '</strong><br>Type: ' + d.Type + '<br>Severity: ' + d.Severity); })
+      .on('mouseout', hideTooltip)
+      .call(d3.drag()
+        .on('start', function (event, d) { if (!event.active) { simulation.alphaTarget(0.3).restart(); } d.fx = d.x; d.fy = d.y; })
+        .on('drag', function (event, d) { d.fx = event.x; d.fy = event.y; })
+        .on('end', function (event, d) { if (!event.active) { simulation.alphaTarget(0); } d.fx = null; d.fy = null; }));
+
+    var label = svg.append('g').selectAll('text').data(nodesCopy).join('text')
+      .text(function (d) { return d.Id; })
+      .attr('font-size', 10)
+      .attr('dx', 13)
+      .attr('dy', 4);
+
+    simulation.on('tick', function () {
+      link.attr('x1', function (d) { return d.source.x; }).attr('y1', function (d) { return d.source.y; })
+        .attr('x2', function (d) { return d.target.x; }).attr('y2', function (d) { return d.target.y; });
+      node.attr('cx', function (d) { return d.x; }).attr('cy', function (d) { return d.y; });
+      label.attr('x', function (d) { return d.x; }).attr('y', function (d) { return d.y; });
+    });
+  }
+
+  var swimlaneRendered = false;
+  function renderSwimlane() {
+    if (swimlaneRendered) { return; }
+    swimlaneRendered = true;
+    var container = document.getElementById('swimlaneViz');
+    var swData = findingsData.filter(function (f) { return f.TimestampSortKey; });
+    if (!swData.length) {
+      container.innerHTML = '<div class="viz-empty">No timestamped findings to plot.</div>';
+      return;
+    }
+    var lanes = Array.from(new Set(swData.map(function (f) { return f.SourceTable; }))).sort();
+    var width = container.clientWidth || 900;
+    var height = Math.max(300, lanes.length * 80 + 70);
+    var margin = { top: 20, right: 30, bottom: 40, left: 190 };
+
+    var svg = d3.select('#swimlaneViz').append('svg').attr('width', width).attr('height', height);
+
+    var times = swData.map(function (f) { return new Date(f.TimestampSortKey); });
+    var xScale = d3.scaleTime().domain(d3.extent(times)).nice().range([margin.left, width - margin.right]);
+    var yScale = d3.scaleBand().domain(lanes).range([margin.top, height - margin.bottom]).padding(0.35);
+
+    svg.append('g').attr('transform', 'translate(0,' + (height - margin.bottom) + ')').call(d3.axisBottom(xScale));
+    svg.append('g').attr('transform', 'translate(' + margin.left + ',0)').call(d3.axisLeft(yScale));
+
+    svg.selectAll('.swim-dot')
+      .data(swData)
+      .join('circle')
+      .attr('class', 'swim-dot')
+      .attr('cx', function (d) { return xScale(new Date(d.TimestampSortKey)); })
+      .attr('cy', function (d) { return yScale(d.SourceTable) + yScale.bandwidth() / 2; })
+      .attr('r', 6)
+      .attr('fill', function (d) { return severityColor[d.CombinedSeverity] || '#94a3b8'; })
+      .attr('stroke', '#1e293b')
+      .attr('stroke-width', 1)
+      .attr('opacity', 0.85)
+      .on('mouseover', function (event, d) { showTooltip(event, '<strong>' + d.RuleName + '</strong><br>' + d.TimestampUtcDisplay + '<br>' + d.DeviceName); })
+      .on('mouseout', hideTooltip);
+  }
+
+  function onTabShown(tabId) {
+    if (tabId === 'tab-table') { initTable(); }
+    if (tabId === 'tab-tree') { renderTree(); }
+    if (tabId === 'tab-network') { renderNetwork(); }
+    if (tabId === 'tab-swimlane') { renderSwimlane(); }
+  }
+
+  onTabShown('tab-summary');
+})();
+</script>
+</body>
+</html>

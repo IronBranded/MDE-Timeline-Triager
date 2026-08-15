@@ -1,0 +1,4 @@
+Timestamp,DeviceId,DeviceName,ActionType,RemoteIP,RemotePort,RemoteUrl,LocalIP,LocalPort,Protocol,LocalIPType,RemoteIPType,InitiatingProcessFileName,InitiatingProcessId,InitiatingProcessCommandLine,ReportId
+2026-08-10T14:06:10.001Z,a1b2c3d4e5f6,WKSTN-FIN-014,ConnectionSuccess,203.0.113.10,443,api.contoso-crm.example,10.20.30.15,52344,Tcp,Private,Public,chrome.exe,5010,C:\Program Files\Google\Chrome\Application\chrome.exe,900123459
+2026-08-10T14:06:44.512Z,a1b2c3d4e5f6,WKSTN-FIN-014,ConnectionSuccess,198.51.100.22,443,login.microsoftonline.com,10.20.30.15,52401,Tcp,Private,Public,teams.exe,5122,C:\Users\jsmith\AppData\Local\Microsoft\Teams\current\Teams.exe,900123460
+2026-08-10T14:07:03.209Z,a1b2c3d4e5f6,WKSTN-FIN-014,ConnectionFailed,203.0.113.44,8443,,10.20.30.15,52410,Tcp,Private,Public,powershell.exe,4602,powershell.exe -File C:\ProgramData\CorpIT\scripts\inventory-scan.ps1,900123461

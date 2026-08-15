@@ -1,0 +1,4 @@
+Timestamp,DeviceId,DeviceName,ActionType,FileName,FolderPath,SHA1,ProcessId,ProcessCommandLine,ReportId
+2026-08-10T14:02:11.123Z,a1b2c3d4e5f6,WKSTN-FIN-014,ProcessCreated,notepad.exe,C:\Windows\System32,9f86d081884c7d659a2feaa0c55ad015a3bf4f1b,4412,C:\Windows\System32\notepad.exe,900123456
+2026-08-10T14:02:45.000Z,a1b2c3d4e5f6,WKSTN-FIN-014,ProcessCreated,corruptÿþfile.exe,C:\Windows\Temp,,4413,badbytes,900123457
+2026-08-10T14:03:00.000Z,a1b2c3d4e5f6,WKSTN-FIN-014,ProcessCreated,calc.exe,C:\Windows\System32,d41d8cd98f00b204e9800998ecf8427e,4414,C:\Windows\System32\calc.exe,900123458

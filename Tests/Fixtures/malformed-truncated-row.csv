@@ -1,0 +1,4 @@
+Timestamp,DeviceId,DeviceName,ActionType,RegistryKey,RegistryValueType,RegistryValueName,RegistryValueData,ReportId
+2026-08-10T14:10:05.330Z,a1b2c3d4e5f6,WKSTN-FIN-014,RegistryValueSet,HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run,String,CorpVPNClient,C:\Program Files\CorpVPN\vpnclient.exe -silent,900123465
+2026-08-10T14:10:55.001Z,a1b2c3d4e5f6,WKSTN-FIN-014,RegistryValueSet,HKEY_CURRENT_USER\Software\Contoso\Inventory,DWORD,LastScanEpoch,1786453200,900123466
+2026-08-10T14:11:02.777Z,a1b2c3d4e5f6,WKSTN-FIN-014,RegistryValueSet,HKEY_CURRENT_USER\Software\Contoso

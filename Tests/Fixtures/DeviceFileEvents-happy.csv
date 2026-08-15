@@ -1,0 +1,4 @@
+Timestamp,DeviceId,DeviceName,ActionType,FileName,FolderPath,SHA1,SHA256,MD5,FileSize,PreviousFileName,ShareName,SensitivityLabel,InitiatingProcessFileName,InitiatingProcessCommandLine,InitiatingProcessId,ReportId
+2026-08-10T14:08:00.100Z,a1b2c3d4e5f6,WKSTN-FIN-014,FileCreated,Q3 report.docx,C:\Users\jsmith\Documents,c2e1c1d6a3f1b6e4d0a9f1c2b3a4d5e6f7089a1b,,,48210,,,General,WINWORD.EXE,C:\Program Files\Microsoft Office\WINWORD.EXE,3810,900123462
+2026-08-10T14:08:41.775Z,a1b2c3d4e5f6,WKSTN-FIN-014,FileRenamed,Q3 report - final.docx,C:\Users\jsmith\Documents,c2e1c1d6a3f1b6e4d0a9f1c2b3a4d5e6f7089a1b,,,48210,Q3 report.docx,,General,WINWORD.EXE,C:\Program Files\Microsoft Office\WINWORD.EXE,3810,900123463
+2026-08-10T14:09:12.640Z,a1b2c3d4e5f6,WKSTN-FIN-014,FileCreated,budget.xlsx,\\fileserver01\finance$,7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5061,,,102400,,finance$,Confidential,EXCEL.EXE,C:\Program Files\Microsoft Office\EXCEL.EXE,3915,900123464

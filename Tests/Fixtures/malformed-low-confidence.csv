@@ -1,0 +1,3 @@
+Timestamp,DeviceId,DeviceName,ActionType,Notes
+2026-08-10T14:20:00.000Z,a1b2c3d4e5f6,WKSTN-FIN-014,CustomEvent,Analyst-added annotation row
+2026-08-10T14:21:00.000Z,a1b2c3d4e5f6,WKSTN-FIN-014,CustomEvent,Another annotation row

@@ -1,0 +1,3 @@
+Timestamp,DeviceId,DeviceName,ActionType,FileName,FolderPath,SHA1,SHA256,InitiatingProcessFileName,InitiatingProcessId,InitiatingProcessCommandLine,InitiatingProcessFolderPath,ReportId
+2026-08-10T14:12:00.010Z,a1b2c3d4e5f6,WKSTN-FIN-014,ImageLoaded,ntdll.dll,C:\Windows\System32,d0a1e2b3c4f5061728394a5b6c7d8e9f0a1b2c3,,notepad.exe,4412,C:\Windows\System32\notepad.exe,C:\Windows\System32,900123470
+2026-08-10T14:12:00.050Z,a1b2c3d4e5f6,WKSTN-FIN-014,ImageLoaded,vpnclientapi.dll,C:\Program Files\CorpVPN,e1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3,,vpnclient.exe,4901,C:\Program Files\CorpVPN\vpnclient.exe -silent,C:\Program Files\CorpVPN,900123471

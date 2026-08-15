@@ -1,0 +1,22 @@
+[
+  {
+    "CaseId": "2026-041",
+    "Name": "Known C2 IP - Case 2026-041",
+    "Field": "RemoteIP",
+    "MatchType": "Exact",
+    "Pattern": "203.0.113.44",
+    "SourceTables": ["DeviceNetworkEvents"],
+    "Severity": "Critical",
+    "Confidence": "High",
+    "Explanation": "Matches a command-and-control IP address identified from threat intel during this engagement."
+  },
+  {
+    "CaseId": "2026-041",
+    "Name": "Known-bad file hash - Case 2026-041",
+    "Field": "SHA1",
+    "MatchType": "Exact",
+    "Pattern": "2ef7bde608ce5404e97d5f042f95f89f1c232871",
+    "Severity": "High",
+    "Explanation": "Matches a hash from this engagement's known-malicious file list."
+  }
+]

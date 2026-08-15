@@ -1,0 +1,23 @@
+[
+  {
+    "Description": "Broad match on powershell.exe -- included specifically to demonstrate that High/Critical findings survive a baseline match rather than being suppressed (requirement #10 precedence).",
+    "RuleId": null,
+    "Field": "FileName",
+    "MatchType": "Exact",
+    "Pattern": "powershell.exe"
+  },
+  {
+    "Description": "SketchyApp under AppData\\Roaming is flagged by DEFEVA-001 in this fixture set; this exclusion demonstrates that a Medium-severity finding IS suppressed when a baseline entry matches.",
+    "RuleId": "DEFEVA-001",
+    "Field": "FolderPath",
+    "MatchType": "Contains",
+    "Pattern": "SketchyApp"
+  },
+  {
+    "Description": "Example of a corporate-tool exclusion an analyst would actually use in practice: SCCM/ConfigMgr client executing management scripts.",
+    "RuleId": null,
+    "Field": "InitiatingProcessFileName",
+    "MatchType": "Exact",
+    "Pattern": "CcmExec.exe"
+  }
+]
