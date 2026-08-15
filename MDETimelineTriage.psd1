@@ -2,9 +2,9 @@
     RootModule           = 'MDETimelineTriage.psm1'
     ModuleVersion        = '0.2.0'
     GUID                 = 'ea605e02-e84e-4ae1-9123-3e8cd13823b4'
-    Author               = '<Your Name>'
-    CompanyName          = '<Your Organization>'
-    Copyright            = '(c) 2026 <Your Name/Organization>. All rights reserved.'
+    Author               = ''
+    CompanyName          = ''
+    Copyright            = '(c) 2026. All rights reserved.'
     Description          = 'Triage and visualization module for Microsoft Defender for Endpoint (MDE) Windows timeline CSV exports. Parses a single MDE timeline/Advanced Hunting CSV export, runs a built-in + custom detection catalog tagged to MITRE ATT&CK, scores findings on independent Severity and Confidence axes, reconstructs process lineage, and renders a self-contained offline interactive HTML report plus a Timeline Explorer-ready enriched CSV.'
     PowerShellVersion    = '5.1'
     CompatiblePSEditions = @('Desktop', 'Core')
