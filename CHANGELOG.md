@@ -11,6 +11,25 @@ was available in the original authoring sandbox) made genuine execution possible
 first time, rather than the out-of-band Python validation used throughout the 0.1.0 build.
 
 ### Added
+- **Documentation consolidation and discrepancy audit.** Requested after a question about
+  why 12 separate `README.md` files existed prompted an honest "that's genuinely more than
+  needed" answer. The 8 `Private/*/README.md` files (one per subsystem folder) are now one
+  `Private/README.md`, organized in actual pipeline order, with the "added in build Phase X"
+  chronological narration trimmed where `CHANGELOG.md` already covers it -- the genuine
+  technical rationale (why incremental lineage tracking, why hand-rolled CSV writing, why
+  forward-only template substitution) is kept. 12 README files down to 5.
+
+  The audit also found real, not cosmetic, discrepancies: every current reference to the
+  Pester suite's test count still said 112/112 and the lint result still said "50 files,"
+  both stale after the RunSummary work added 8 tests and 4 new source files later in the
+  same session without a documentation pass to match -- corrected to the actual current
+  120/120 and 54 files, verified fresh rather than assumed. `Data/README.md` never mentioned
+  `SchemaMap.json` or `ResponseActionKeywords.json` at all, despite both being real,
+  load-bearing files. `Tests/README.md`'s fixture inventory was missing
+  `DeviceProcessEvents-runsummary-tests.csv`, used by 8 real tests. A demo-only fixture
+  (`example-report-source.csv`, built to generate example reports shown in conversation, not
+  referenced by any actual test) was sitting undocumented in `Tests/Fixtures/` and has been
+  removed rather than retroactively documented as if it belonged there.
 - **Comprehensive incident overview in the executive summary**, added after real feedback
   that the summary needed to answer the questions an analyst actually opens a report to
   answer: what timeframe does this cover, when did the bad activity start and when did MDE
@@ -42,7 +61,7 @@ first time, rather than the out-of-band Python validation used throughout the 0.
   is a heuristic, not the real algorithm -- but genuine tool-based analysis rather than
   manual reading. Self-tested against a deliberately bad scratch file (one instance of each
   of the 6 non-parse-error/non-verb checks) before trusting its result, confirming all 6 were
-  actually caught. Result against the real module: 0 findings across 50 files.
+  actually caught. Result against the real module: 0 findings across 54 files.
 
 ### Fixed (found only once real execution was possible)
 - `Invoke-MDETriage` -- the module's headline "one-line" entry point, used in every Quick
@@ -90,7 +109,7 @@ first time, rather than the out-of-band Python validation used throughout the 0.
   every tab in each: zero runtime errors.
 
 ### Verified (real execution, not simulation)
-- **The actual Pester test suite: 112/112 passing**, via Pester 4.10.1 (pure PowerShell, no
+- **The actual Pester test suite: 120/120 passing**, via Pester 4.10.1 (pure PowerShell, no
   `dotnet` SDK required, downloaded directly from GitHub -- see README.md). This is real
   execution of the literal, unmodified `Tests/*.Tests.ps1` files by the real test runner, not
   a hand-written substitute.
@@ -98,7 +117,7 @@ first time, rather than the out-of-band Python validation used throughout the 0.
   every fixture in the project via real PowerShell 7.6.4.
 - `Tests/Invoke-ManualValidation.ps1`: 71 distinct checks, 71 passed, 0 failed.
 - `Tests/Invoke-ManualLint.ps1`: 8 PSScriptAnalyzer-style checks (AST-based, see Added
-  above), 0 findings across 50 files -- self-tested against a deliberately bad file first.
+  above), 0 findings across 54 files -- self-tested against a deliberately bad file first.
 - **Real JavaScript execution via `jsdom`** (see the Fixed entry above for what this caught):
   the generated report's client-side JS actually runs in a real DOM across every tab, for
   0/1/7-finding reports, with zero runtime errors after the fix. Materially stronger than

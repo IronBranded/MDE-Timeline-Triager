@@ -1,6 +1,6 @@
 # Tests/
 
-Pester test suite (requirement #12) -- 7 files, ~100 executed assertions once `-TestCases`
+Pester test suite (requirement #12) -- 7 files, 120 executed assertions once `-TestCases`
 arrays are expanded:
 - `Module.Tests.ps1` -- manifest validity, semantic versioning, the exported-function list
   matches the spec's closed 7-cmdlet surface exactly, every cmdlet uses an approved verb,
@@ -37,7 +37,7 @@ arrays are expanded:
   integrity -- never its component stages.
 
 Run with `Invoke-Pester -Path .\Tests\` from the module root. **This suite has actually run
-against real Pester and passes 112/112** -- see README.md's "Getting Pester Running Without
+against real Pester and passes 120/120** -- see README.md's "Getting Pester Running Without
 the PowerShell Gallery" section if `Invoke-Pester` isn't already available to you (Pester
 4.10.1, unlike 5.x/6.x, needs no `dotnet` SDK and no PowerShell Gallery access).
 
@@ -179,3 +179,12 @@ written to a normal Documents path, a Run key pointing at Program Files) that mu
   fixtures, and none of the 8 new rules fired on the Phase 3/5 fixtures built to test only
   the original 5 -- confirming the expanded catalog didn't introduce cross-rule false
   positives.
+
+**RunSummary / executive summary incident overview** (`Tests/Invoke-MDEDetection.Tests.ps1`'s
+"RunSummary object" context) -- 8 tests against a purpose-built fixture with known, exact
+values for every property being asserted on:
+- `DeviceProcessEvents-runsummary-tests.csv` -- 4 rows spanning a known 45-minute window: a
+  benign row (establishes the export's start), an EXEC-001-triggering row (establishes the
+  first-suspicious-activity "left goalpost"), an `AlertTriggered`-ActionType row (the
+  alert-linked-events heuristic), and a `MachineIsolationRequested`-ActionType row
+  (establishes both the export's end and the first-response "right goalpost" heuristic).

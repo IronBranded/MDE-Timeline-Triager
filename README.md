@@ -295,7 +295,7 @@ object instead of being silently dropped. This module reads the spec's "baseline
 may suppress findings only at Medium severity or below" as a ceiling on the exclusion
 mechanism itself, not only on the specific custom-IOC-vs-baseline conflict used as the
 requirement's example; see `Invoke-MDEDetection`'s comment-based help and
-`Private/Baseline/README.md` for the full reasoning.
+`Private/README.md`'s Baseline/ section for the full reasoning.
 
 ## Report Views
 
@@ -385,7 +385,7 @@ letting the word do too much work:
   `Invoke-MDEDetection`'s own `.NOTES` help text (a cross-reference to `.DESCRIPTION` that
   happened to wrap to the start of a line, which PowerShell's comment-help parser misread as
   a second `.DESCRIPTION` section, corrupting the entire parsed help output). All three
-  fixed and confirmed: **112/112 tests passing**, via `Invoke-Pester -Script .\Tests\*.Tests.ps1`.
+  fixed and confirmed: **120/120 tests passing**, via `Invoke-Pester -Script .\Tests\*.Tests.ps1`.
   Pester wasn't kept in the shipped module (a 75MB runtime download and a 4MB test-framework
   source tree aren't appropriate to bundle into a module that's otherwise a few hundred KB);
   see "Getting Pester Running" below to reproduce this yourself in under a minute.
@@ -497,7 +497,8 @@ See "Verification Status" above for what has and hasn't been independently confi
 
 ## Architecture
 
-Each `Private/` subfolder has its own README describing what it contains and why. Brief map:
+`Private/README.md` is the architectural map of every subfolder below -- what it contains
+and why. Brief map:
 
 - `Private/Parsing/` -- encoding detection, the hand-rolled CSV engine, schema-set detection.
 - `Private/Detections/<Tactic>/` -- the 13 rule functions, one file each.
@@ -513,8 +514,8 @@ rule evaluation and baseline/custom-IOC filtering exactly as they arrive, but bu
 (typically sparse) set of *findings* -- not the full row stream -- until process-lineage
 reconstruction is complete, since a process's ancestors can be described in rows anywhere in
 the file. This is a deliberate, documented departure from the otherwise single-pass,
-bounded-memory design used everywhere else in the pipeline; see `Private/Lineage/README.md`
-and `Invoke-MDEDetection`'s comment-based help for the full reasoning.
+bounded-memory design used everywhere else in the pipeline; see `Private/README.md`'s
+Lineage/ section and `Invoke-MDEDetection`'s comment-based help for the full reasoning.
 
 ## Testing
 
@@ -537,7 +538,7 @@ See `Tests/README.md` for what each covers.
 
 Pester 6.x (and 5.x) require a `dotnet` SDK to build their compiled component from source.
 **Pester 4.10.1 does not** -- it's pure PowerShell, no build step, and every test in this
-module's `Tests/*.Tests.ps1` suite runs correctly under it (confirmed: 112/112 passing). If
+module's `Tests/*.Tests.ps1` suite runs correctly under it (confirmed: 120/120 passing). If
 `Invoke-Pester` isn't already on your machine and you can't reach the PowerShell Gallery:
 
 ```powershell
