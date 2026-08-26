@@ -24,20 +24,62 @@ invocation. Windows-only.
 - **Platform**: Windows (the module reads Windows-specific telemetry; nothing about the
   PowerShell code itself is Windows-only, but there is no reason to run it elsewhere).
 
-## Installation
+## Setup
 
-Copy the `MDETimelineTriage` folder to a location on your `$env:PSModulePath`, or import it
-directly by path:
+**1. Get the code.** Clone it, or download the ZIP from GitHub's "Code" button and extract
+it:
 
 ```powershell
-Import-Module 'C:\path\to\MDETimelineTriage\MDETimelineTriage.psd1'
+git clone https://github.com/IronBranded/MDE-Timeline-Triager.git
 ```
 
-Verify it loaded correctly:
+**2. Unblock the files (Windows).** Anything extracted from a ZIP downloaded off the
+internet carries Windows' "Mark of the Web," which blocks PowerShell from running it by
+default -- you'll otherwise hit a "cannot be loaded because running scripts is disabled" or
+"is not digitally signed" error the first time you try to import the module or run
+`Start-MDETT.ps1`. Unblock the whole folder at once rather than one file at a time:
 
 ```powershell
+Get-ChildItem -Path .\MDE-Timeline-Triager -Recurse | Unblock-File
+```
+
+**3. Allow script execution (Windows), if needed.** Check your current policy:
+
+```powershell
+Get-ExecutionPolicy -Scope CurrentUser
+```
+
+If that returns `Restricted` (a common default), allow locally-run scripts for your own
+account only, without changing anything machine-wide or for other users:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+`RemoteSigned` still requires scripts that carry the Mark of the Web to be either signed or
+explicitly unblocked (step 2) -- it doesn't disable script safety checks outright, it just
+stops blocking scripts you wrote or downloaded and unblocked yourself. If your organization
+enforces a stricter policy via Group Policy (e.g. `AllSigned`) and this command is itself
+blocked, you'll need your IT/SOC team to either sign the module or grant an exception --
+this module ships unsigned, and no step here can work around an org-enforced policy for you.
+
+**4. Import the module and verify it loaded:**
+
+```powershell
+Import-Module .\MDE-Timeline-Triager\MDETimelineTriage.psd1
 Get-Command -Module MDETimelineTriage
 Get-MDEDetectionCatalog | Measure-Object   # should report 13 rules
+```
+
+Or copy the `MDETimelineTriage` folder to a location on your `$env:PSModulePath` instead, so
+`Import-Module MDETimelineTriage` works by name from anywhere without a path.
+
+**5. Initiate it** -- either the interactive launcher or a direct cmdlet call both work from
+here; see "Quick Start" immediately below for what each looks like:
+
+```powershell
+cd .\MDE-Timeline-Triager\MDETimelineTriage
+.\Start-MDETT.ps1
 ```
 
 ## Quick Start
