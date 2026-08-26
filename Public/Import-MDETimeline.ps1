@@ -57,6 +57,14 @@ function Import-MDETimeline {
         Path to the single MDE timeline CSV export to parse. Mandatory. Must point to an
         existing, readable file; v1 processes exactly one CSV per invocation (no
         multi-file/batch ingestion -- see project scope).
+    .PARAMETER SkipRowCountPreScan
+        By default, this cmdlet reads through the file once (cheaply -- no field-splitting,
+        no object construction) to get an exact row count before the real parse begins, so
+        Write-Progress can report accurate "row N of M" percentages instead of an estimate.
+        This adds real time on very large files -- see this cmdlet's .NOTES for measured
+        overhead. Pass this switch to skip the pre-scan and fall back to a
+        bytes-read-versus-file-size percentage estimate instead, if you'd rather trade
+        progress accuracy for a faster start. Optional, default $false (pre-scan runs).
 
     .EXAMPLE
         Import-MDETimeline -Path 'C:\Cases\2026-041\host01-timeline.csv'
@@ -108,7 +116,11 @@ function Import-MDETimeline {
                 $true
             })]
         [string]
-        $Path
+        $Path,
+
+        [Parameter()]
+        [switch]
+        $SkipRowCountPreScan
     )
 
     $sourceFile = Get-Item -LiteralPath $Path
@@ -119,6 +131,16 @@ function Import-MDETimeline {
 
     $encodingName = Get-MDEFileEncoding -Path $sourceFile.FullName
     Write-Verbose "Import-MDETimeline: detected encoding (diagnostic) = $encodingName"
+
+    $totalRowCount = -1
+    if (-not $SkipRowCountPreScan) {
+        Write-Progress -Activity "Scanning $($sourceFile.Name)" -Status 'Counting rows for progress reporting...' -PercentComplete -1
+        $preScanStart = Get-Date
+        $totalRowCount = Get-MDECsvRowCount -Path $sourceFile.FullName
+        $preScanSeconds = ((Get-Date) - $preScanStart).TotalSeconds
+        Write-Progress -Activity "Scanning $($sourceFile.Name)" -Completed
+        Write-Verbose "Import-MDETimeline: row count pre-scan found $('{0:N0}' -f $totalRowCount) data row(s) in $('{0:N1}' -f $preScanSeconds)s."
+    }
 
     $fileStream = $null
     $streamReader = $null
@@ -219,7 +241,7 @@ function Import-MDETimeline {
 
             if (($rowsEmitted - $lastProgressRowCount) -ge $progressInterval) {
                 $lastProgressRowCount = $rowsEmitted
-                Write-MDEProgress -Activity "Parsing $($sourceFile.Name)" -RowsProcessed $rowsEmitted -BytesRead $fileStream.Position -TotalBytes $sourceFile.Length -StartTime $startTime
+                Write-MDEProgress -Activity "Parsing $($sourceFile.Name)" -RowsProcessed $rowsEmitted -TotalRows $totalRowCount -BytesRead $fileStream.Position -TotalBytes $sourceFile.Length -StartTime $startTime
             }
         }
 

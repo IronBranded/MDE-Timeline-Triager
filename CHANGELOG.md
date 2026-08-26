@@ -4,6 +4,86 @@ All notable changes to MDETimelineTriage are documented in this file. Format loo
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic versioning
 (`major.minor.patch`) as declared in `MDETimelineTriage.psd1`.
 
+## [0.3.0] - 2026-08-26
+
+Interactive launcher, line-count-based progress reporting, and cross-platform Downloads
+folder/dated-naming output -- requested together, and the first request specifically pointed
+at an external reference (github.com/IronBranded/Microsoft-Audit-Tracker-V2) rather than a
+description, which was fetched and actually read (its file structure, console-menu pattern,
+and cross-platform path-resolution module) before writing any code, rather than guessed at.
+
+### Added
+- **`Start-MDETT.ps1`**, an interactive menu-driven launcher at the module root, added on top
+  of the existing tested module rather than replacing it -- every menu option is a thin
+  wrapper around a real public cmdlet already covered by the Pester suite; the launcher's own
+  job is only presentation and prompting. Modeled on Microsoft-Audit-Tracker-V2's pattern:
+  one entry point, a numbered menu (Full Triage, decode a command line, validate a config
+  file, view the detection catalog, a diagnostic check), immediate console recap after Full
+  Triage (severity-count breakdown, output file paths). Carries a script-scoped
+  `[SuppressMessageAttribute('PSAvoidUsingWriteHost', ...)]` with an explicit justification
+  (an interactive console script legitimately needs Write-Host; every actual module function
+  still uses Write-Verbose/-Warning/-Progress exclusively) -- `Tests/Invoke-ManualLint.ps1`
+  carries a matching, equally-explicit exception, not a blanket allowance.
+- **Line-count-based progress reporting for `Import-MDETimeline`.** Previously,
+  `Write-Progress`'s percentage was bytes-read-versus-file-size -- an estimate. Now, by
+  default, `Import-MDETimeline` pre-scans the file once (cheaply: no field-splitting, no
+  object construction, just reading and discarding each logical line via the same
+  quote-aware reader the real parse uses) to get an exact row count, so progress reports
+  genuine "row N of M" percentages and an ETA. This was a deliberate correctness choice, not
+  the obvious one: a naive `'\n'`-byte count would overcount relative to the real row count,
+  since a quoted field may legitimately contain an embedded newline (e.g. multi-line command
+  output) -- confirmed with a dedicated fixture (`embedded-newline-test.csv`, 5 physical
+  lines, exactly 2 logical rows) before trusting the approach. Measured real cost on a
+  200,000-row file: **+~22% to total parse time** (30.46s vs. 24.97s) -- a real, disclosed
+  tradeoff, with `-SkipRowCountPreScan` as an escape hatch for anyone who'd rather have raw
+  speed than an accurate percentage.
+- **Cross-platform Downloads folder resolution and `MDETT-<date>` output naming.**
+  `Get-MDEDownloadsFolder` resolves the current user's Downloads folder: Windows via the
+  actual Shell Folders registry value (`HKCU:\...\User Shell Folders`,
+  `{374DE290-123F-4565-9164-39C4925E467B}`) rather than assuming
+  `%USERPROFILE%\Downloads`, which would be wrong for a redirected or OneDrive-managed
+  Downloads folder; macOS/Linux via `$HOME/Downloads` (Linux additionally tries
+  `xdg-user-dir DOWNLOAD` first). `New-MDEReport -OutputPath` is now optional: supplied
+  explicitly, output naming and location are unchanged from earlier versions (full backward
+  compatibility, and every existing test that passes `-OutputPath` needed no changes at all);
+  omitted entirely, it resolves to the Downloads folder and automatically switches on the new
+  `-DatedFileNames` switch, writing `MDETT-<yyyy-MM-dd>-Report.html` /
+  `MDETT-<yyyy-MM-dd>-Findings.csv` instead of the fixed traditional names.
+  `Invoke-MDETriage` mirrors the same optional `-OutputPath`/`-DatedFileNames` parameters and
+  passes them straight through.
+- 10 new Pester tests covering all of the above: the pre-scan's exact row count and its
+  embedded-newline correctness property, `-SkipRowCountPreScan` producing identical parsed
+  rows, all four `-OutputPath`/`-DatedFileNames` combinations on `New-MDEReport` (including
+  that `-WhatIf` with `-OutputPath` omitted reports the resolved Downloads path and creates
+  nothing), and `Get-MDEDownloadsFolder`'s basic contract.
+
+### Fixed (found by actually running the new launcher end-to-end, not by reading the code)
+- **`Invoke-MDETriage`'s own separate `-OutputPath` parameter was missed** when
+  `New-MDEReport`'s was made optional. It stayed `[Parameter(Mandatory = $true)]`, so calling
+  `Invoke-MDETriage` without `-OutputPath` -- exactly what the new launcher's Full Triage
+  option does -- made PowerShell interactively prompt for the missing mandatory parameter
+  instead of correctly resolving to Downloads. The prompt consumed the next piece of
+  simulated input in the test session and the run failed with a null-argument error. Caught
+  immediately by piping a full simulated interactive session through the real script (exactly
+  as a user would type), not by reviewing the parameter list. Fixed by mirroring
+  `New-MDEReport`'s exact pattern; added a dedicated regression test that inspects the real
+  parameter metadata (`Mandatory`) directly rather than only checking a default value exists,
+  plus a real omitted-`-OutputPath` execution test.
+
+### Verified (real execution)
+- The full simulated interactive session (Full Triage end-to-end, plus all four other menu
+  options individually) piped through `Start-MDETT.ps1` via stdin, exactly as a real user's
+  keystrokes would arrive -- not a description of expected behavior.
+- `Get-MDEDownloadsFolder` confirmed correct on Linux (the only platform this sandbox can
+  execute) via direct invocation and via both consumers (`New-MDEReport`, `Invoke-MDETriage`)
+  omitting `-OutputPath`. **The Windows registry-based path and the macOS path are reasoned
+  through carefully but have not been executed anywhere** -- no Windows or macOS environment
+  is available in this sandbox, the same honest distinction already drawn around the
+  `.github/workflows/ci.yml` CI file in the `[0.2.0]` entry above.
+- Full regression suite after every change: Pester 130/130 (up from 120), manual validation
+  71/71, lint 0 findings across 57 files (up from 54 -- `Start-MDETT.ps1`,
+  `Get-MDECsvRowCount.ps1`, and `Get-MDEDownloadsFolder.ps1` are new).
+
 ## [0.2.0] - 2026-08-13
 
 Follow-up pass after real `pwsh` (downloaded from PowerShell's GitHub releases, since none

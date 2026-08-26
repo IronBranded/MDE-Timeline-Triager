@@ -1,6 +1,6 @@
 @{
     RootModule           = 'MDETimelineTriage.psm1'
-    ModuleVersion        = '0.2.0'
+    ModuleVersion        = '0.3.0'
     GUID                 = 'ea605e02-e84e-4ae1-9123-3e8cd13823b4'
     Author               = ''
     CompanyName          = ''

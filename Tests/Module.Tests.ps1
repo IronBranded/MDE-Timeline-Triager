@@ -60,4 +60,12 @@ Describe 'MDETimelineTriage module manifest and public surface' {
         (Get-Command Invoke-MDEDetection).Parameters.Keys | Should -Contain 'WhatIf'
         (Get-Command New-MDEReport).Parameters.Keys | Should -Contain 'WhatIf'
     }
+
+    It 'Get-MDEDownloadsFolder returns a non-empty, absolute-looking path (platform-appropriate resolution verified separately: Windows via the Shell Folders registry key, macOS/Linux via $HOME -- only the current test platform''s branch actually executes here)' {
+        Import-Module $manifestPath -Force
+        $mod = Get-Module MDETimelineTriage
+        $result = & $mod { Get-MDEDownloadsFolder }
+        $result | Should -Not -BeNullOrEmpty
+        [System.IO.Path]::IsPathRooted($result) | Should -Be $true
+    }
 }

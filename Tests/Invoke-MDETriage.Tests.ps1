@@ -105,4 +105,41 @@ Describe 'Invoke-MDETriage' {
             }
         }
     }
+
+    Context 'Optional -OutputPath (Downloads folder auto-resolution)' {
+        # Regression coverage for a real bug: Invoke-MDETriage declares its OWN separate
+        # -OutputPath parameter (rather than inheriting New-MDEReport's), and when
+        # New-MDEReport's -OutputPath was made optional, this cmdlet's copy was missed --
+        # it stayed [Parameter(Mandatory = $true)], so calling Invoke-MDETriage without
+        # -OutputPath made PowerShell interactively PROMPT for it instead of correctly
+        # resolving to Downloads, which silently broke the interactive launcher
+        # (Start-MDETT.ps1) the first time it was actually run end-to-end. Found only by
+        # piping simulated input through the real launcher, not by reading the code.
+        BeforeAll {
+            $script:sourcePathForOptOut = Join-Path $fixturesPath 'DeviceProcessEvents-detection-tests.csv'
+            $script:mod = Get-Module MDETimelineTriage
+            $script:expectedDownloadsFolder = & $mod { Get-MDEDownloadsFolder }
+            $script:todayStamp = (Get-Date).ToString('yyyy-MM-dd')
+        }
+
+        It 'Does not prompt for -OutputPath -- it is a genuinely optional parameter, not just one with a default value' {
+            $paramMetadata = (Get-Command Invoke-MDETriage).Parameters['OutputPath']
+            $isMandatory = $paramMetadata.Attributes | Where-Object { $_ -is [System.Management.Automation.ParameterAttribute] } | ForEach-Object { $_.Mandatory }
+            ($isMandatory -contains $true) | Should -Be $false
+        }
+
+        It 'Omitting -OutputPath resolves to Get-MDEDownloadsFolder''s result with MDETT-dated names, same as New-MDEReport directly' {
+            $expectedHtml = Join-Path $expectedDownloadsFolder "MDETT-$todayStamp-Report.html"
+            $expectedCsv = Join-Path $expectedDownloadsFolder "MDETT-$todayStamp-Findings.csv"
+            try {
+                Invoke-MDETriage -Path $sourcePathForOptOut
+                Test-Path $expectedHtml | Should -Be $true
+                Test-Path $expectedCsv | Should -Be $true
+            }
+            finally {
+                if (Test-Path $expectedHtml) { Remove-Item -Path $expectedHtml -Force }
+                if (Test-Path $expectedCsv) { Remove-Item -Path $expectedCsv -Force }
+            }
+        }
+    }
 }

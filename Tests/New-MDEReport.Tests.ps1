@@ -152,4 +152,64 @@ Describe 'New-MDEReport' {
             }
         }
     }
+
+    Context 'Optional -OutputPath: Downloads folder auto-resolution and MDETT-dated naming' {
+        BeforeAll {
+            $script:sourcePathForNaming = Join-Path $fixturesPath 'DeviceProcessEvents-detection-tests.csv'
+            $script:mod = Get-Module MDETimelineTriage
+            $script:expectedDownloadsFolder = & $mod { Get-MDEDownloadsFolder }
+            $script:todayStamp = (Get-Date).ToString('yyyy-MM-dd')
+        }
+
+        It 'Explicit -OutputPath without -DatedFileNames still uses the traditional fixed names (backward compatibility)' {
+            $customDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "MDEReportFixedNames_$([guid]::NewGuid())"
+            try {
+                Import-MDETimeline -Path $sourcePathForNaming | Invoke-MDEDetection | New-MDEReport -SourcePath $sourcePathForNaming -OutputPath $customDir
+                Test-Path (Join-Path $customDir 'MDETimelineTriage-Report.html') | Should -Be $true
+                Test-Path (Join-Path $customDir 'MDETimelineTriage-Findings.csv') | Should -Be $true
+            }
+            finally {
+                if (Test-Path $customDir) { Remove-Item -Path $customDir -Recurse -Force }
+            }
+        }
+
+        It 'Explicit -OutputPath WITH -DatedFileNames uses MDETT-dated names at that custom location' {
+            $customDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "MDEReportDatedCustom_$([guid]::NewGuid())"
+            try {
+                Import-MDETimeline -Path $sourcePathForNaming | Invoke-MDEDetection | New-MDEReport -SourcePath $sourcePathForNaming -OutputPath $customDir -DatedFileNames
+                Test-Path (Join-Path $customDir "MDETT-$todayStamp-Report.html") | Should -Be $true
+                Test-Path (Join-Path $customDir "MDETT-$todayStamp-Findings.csv") | Should -Be $true
+            }
+            finally {
+                if (Test-Path $customDir) { Remove-Item -Path $customDir -Recurse -Force }
+            }
+        }
+
+        It 'Omitting -OutputPath entirely resolves to Get-MDEDownloadsFolder''s result and auto-enables dated names' {
+            $expectedHtml = Join-Path $expectedDownloadsFolder "MDETT-$todayStamp-Report.html"
+            $expectedCsv = Join-Path $expectedDownloadsFolder "MDETT-$todayStamp-Findings.csv"
+            try {
+                Import-MDETimeline -Path $sourcePathForNaming | Invoke-MDEDetection | New-MDEReport -SourcePath $sourcePathForNaming
+                Test-Path $expectedHtml | Should -Be $true
+                Test-Path $expectedCsv | Should -Be $true
+            }
+            finally {
+                # Clean up only the specific files this test created, not the whole
+                # Downloads folder, which may contain real unrelated content on a real
+                # machine.
+                if (Test-Path $expectedHtml) { Remove-Item -Path $expectedHtml -Force }
+                if (Test-Path $expectedCsv) { Remove-Item -Path $expectedCsv -Force }
+            }
+        }
+
+        It '-WhatIf with -OutputPath omitted reports the resolved Downloads path and creates nothing' {
+            $expectedHtml = Join-Path $expectedDownloadsFolder "MDETT-$todayStamp-Report.html"
+            $preExisted = Test-Path $expectedDownloadsFolder
+            Import-MDETimeline -Path $sourcePathForNaming | Invoke-MDEDetection | New-MDEReport -SourcePath $sourcePathForNaming -WhatIf
+            Test-Path $expectedHtml | Should -Be $false
+            if (-not $preExisted) {
+                Test-Path $expectedDownloadsFolder | Should -Be $false
+            }
+        }
+    }
 }

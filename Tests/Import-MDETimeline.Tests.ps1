@@ -110,6 +110,37 @@ Describe 'Import-MDETimeline' {
         }
     }
 
+    Context 'Row-count pre-scan and line-count-based progress' {
+        It 'Get-MDECsvRowCount returns the exact data row count (header excluded)' {
+            $mod = Get-Module MDETimelineTriage
+            $path = Join-Path $fixturesPath 'DeviceProcessEvents-phase7-tests.csv'
+            $count = & $mod { param($p) Get-MDECsvRowCount -Path $p } $path
+            $count | Should -Be 12
+        }
+
+        It '-SkipRowCountPreScan produces identical parsed rows to the default pre-scanning path' {
+            $path = Join-Path $fixturesPath 'DeviceProcessEvents-phase7-tests.csv'
+            $withPreScan = @(Import-MDETimeline -Path $path -WarningAction SilentlyContinue)
+            $withoutPreScan = @(Import-MDETimeline -Path $path -SkipRowCountPreScan -WarningAction SilentlyContinue)
+            $withPreScan.Count | Should -Be $withoutPreScan.Count
+            ($withPreScan | Select-Object -First 1).ProcessCommandLine | Should -Be ($withoutPreScan | Select-Object -First 1).ProcessCommandLine
+        }
+
+        It 'Row count pre-scan correctly counts a row containing an embedded newline inside a quoted field as ONE row, not two' {
+            # Regression guard for the specific correctness concern that ruled out a naive
+            # '\n'-count approach: a quoted field may legitimately contain an embedded
+            # newline (e.g. multi-line command output). embedded-newline-test.csv is 5
+            # physical lines (header + 2 logical rows, one of which spans 3 physical lines)
+            # -- a naive newline count would say 4 data rows; the real, correct answer is 2.
+            $mod = Get-Module MDETimelineTriage
+            $path = Join-Path $fixturesPath 'embedded-newline-test.csv'
+            $realRowCount = (@(Import-MDETimeline -Path $path -WarningAction SilentlyContinue)).Count
+            $preScanCount = & $mod { param($p) Get-MDECsvRowCount -Path $p } $path
+            $realRowCount | Should -Be 2
+            $preScanCount | Should -Be 2
+        }
+    }
+
     Context 'Evidence integrity (requirement #15)' {
         It 'Does not modify the source file' {
             $path = Join-Path $fixturesPath 'DeviceProcessEvents-happy.csv'

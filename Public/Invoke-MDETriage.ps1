@@ -30,8 +30,15 @@ function Invoke-MDETriage {
         Path to the single MDE timeline CSV export to process. Mandatory.
 
     .PARAMETER OutputPath
-        Directory to write the HTML report and enriched CSV into. Mandatory. Created if it
-        does not already exist.
+        Directory to write the HTML report and enriched CSV into. Optional. Created if it
+        does not already exist. When omitted, resolves to the current user's Downloads
+        folder (cross-platform) and automatically switches on -DatedFileNames -- see
+        New-MDEReport's help for the full behavior, since this parameter is passed straight
+        through.
+    .PARAMETER DatedFileNames
+        Switch. Names the two output files `MDETT-<yyyy-MM-dd>-Report.html` /
+        `MDETT-<yyyy-MM-dd>-Findings.csv` instead of the fixed traditional names.
+        Automatically turned on when -OutputPath is omitted. See New-MDEReport's help.
 
     .PARAMETER BaselineConfigPath
         Path to a JSON baseline/exclusion config file. Optional; passed through to
@@ -96,10 +103,13 @@ function Invoke-MDETriage {
         [string]
         $Path,
 
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
+        [Parameter()]
         [string]
         $OutputPath,
+
+        [Parameter()]
+        [switch]
+        $DatedFileNames,
 
         [Parameter()]
         [string]
@@ -126,17 +136,19 @@ function Invoke-MDETriage {
     $baselineNote = if ($BaselineConfigPath) { $BaselineConfigPath } else { '<none>' }
     $customIocNote = if ($CustomIOCConfigPath) { $CustomIOCConfigPath } else { '<none>' }
     $configNote = " (baseline: $baselineNote; custom IOC: $customIocNote; redact: $($Redact.IsPresent); local time: $($LocalTime.IsPresent); size threshold: $ReportSizeThreshold)"
+    $destinationNote = if ([string]::IsNullOrWhiteSpace($OutputPath)) { 'your Downloads folder (MDETT-dated file names, -OutputPath not supplied)' } else { $OutputPath }
 
-    if ($PSCmdlet.ShouldProcess($Path, "Run full MDE triage pipeline and write report to '$OutputPath'$configNote")) {
+    if ($PSCmdlet.ShouldProcess($Path, "Run full MDE triage pipeline and write report to '$destinationNote'$configNote")) {
         $detectionParams = @{}
         if ($BaselineConfigPath) { $detectionParams['BaselineConfigPath'] = $BaselineConfigPath }
         if ($CustomIOCConfigPath) { $detectionParams['CustomIOCConfigPath'] = $CustomIOCConfigPath }
 
         $reportParams = @{
             SourcePath          = $Path
-            OutputPath           = $OutputPath
             ReportSizeThreshold = $ReportSizeThreshold
         }
+        if (-not [string]::IsNullOrWhiteSpace($OutputPath)) { $reportParams['OutputPath'] = $OutputPath }
+        if ($DatedFileNames) { $reportParams['DatedFileNames'] = $true }
         if ($Redact) { $reportParams['Redact'] = $true }
         if ($LocalTime) { $reportParams['LocalTime'] = $true }
 

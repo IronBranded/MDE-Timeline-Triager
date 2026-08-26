@@ -58,7 +58,7 @@ $files = Get-ChildItem -Path $moduleRoot -Filter '*.ps1' -Recurse |
     Where-Object { $_.FullName -notmatch '[\\/]Tests[\\/]' }
 $files += Get-ChildItem -Path $moduleRoot -Filter '*.psm1'
 
-Write-Host "Linting $($files.Count) files (Public/Private module code, excluding Tests/) via the native AST parser..." -ForegroundColor Cyan
+Write-Host "Linting $($files.Count) files (Public/Private module code plus Start-MDETT.ps1, excluding Tests/) via the native AST parser..." -ForegroundColor Cyan
 
 foreach ($file in $files) {
     $relPath = $file.FullName.Replace($moduleRoot, '').TrimStart('/', '\')
@@ -96,6 +96,13 @@ foreach ($file in $files) {
     # --- Write-Host usage ---
     foreach ($cmd in $commandAsts) {
         if ($cmd.GetCommandName() -eq 'Write-Host') {
+            # Start-MDETT.ps1 is a deliberate, documented exception: it's a top-level
+            # interactive console launcher, not a pipeline-composable module function, and
+            # carries its own [SuppressMessageAttribute] with a matching justification (see
+            # that file's .NOTES). Every actual module function still must not use
+            # Write-Host -- this exception is scoped to that one file only, not a blanket
+            # allowance.
+            if ($relPath -eq 'Start-MDETT.ps1') { continue }
             Add-Finding -File $relPath -Rule 'PSAvoidUsingWriteHost' -Line $cmd.Extent.StartLineNumber -Message 'Write-Host used (output is not capturable/redirectable).'
         }
     }

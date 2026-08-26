@@ -21,14 +21,29 @@ and `Test-MDEResponseActionKeyword` / `Test-MDEAlertLikeRow` (the two heuristic 
 the executive summary's incident overview -- see `Data/ResponseActionKeywords.json` and
 `Get-MDEIncidentOverviewHtml.ps1` below for why these are explicitly best-effort estimates,
 not authoritative matches against MDE's real ActionType vocabulary, which Microsoft does not
-publish in full).
+publish in full). `Get-MDEDownloadsFolder` resolves the current user's Downloads folder
+cross-platform for `New-MDEReport`'s optional `-OutputPath` -- Windows via the actual Shell
+Folders registry value (not a hardcoded `%USERPROFILE%\Downloads` guess, which would be wrong
+for a redirected/OneDrive-managed Downloads folder), macOS/Linux via `$HOME/Downloads`
+(Linux additionally tries `xdg-user-dir DOWNLOAD` first). Windows PowerShell 5.1 has no
+`$IsWindows`/`$IsMacOS`/`$IsLinux` variables at all; since 5.1 only ever runs on Windows,
+their absence is itself sufficient confirmation of that platform.
 
 ## Parsing/
 
 Encoding detection (UTF-8 / UTF-8 BOM / UTF-16), flattened-column mapping (MDE portal exports
-flatten nested JSON like `InitiatingProcess.*` into individual CSV columns), and MDE export
-schema-set detection (Device Timeline vs. Advanced Hunting vs. Live Response) behind
-`Import-MDETimeline`.
+flatten nested JSON like `InitiatingProcess.*` into individual CSV columns), MDE export
+schema-set detection (Device Timeline vs. Advanced Hunting vs. Live Response), and the
+row-count pre-scan (`Get-MDECsvRowCount`) `Import-MDETimeline` uses by default for accurate
+line-count-based progress reporting -- all behind `Import-MDETimeline`.
+
+The pre-scan deliberately reuses `Read-MDELogicalCsvLine`, the same quote-aware reader the
+real parse uses, rather than a naive `'\n'`-byte count: a quoted field may legitimately
+contain an embedded newline (e.g. a multi-line command captured verbatim in
+`ProcessCommandLine`), and counting raw newlines would overcount relative to the actual
+number of rows the real parse produces -- the resulting progress percentage would reach 100%
+before parsing actually finished. See `Tests/README.md`'s embedded-newline fixture for the
+regression test guarding this specifically.
 
 The module sets `Set-StrictMode -Version Latest`. CSV rows have a variable property set by
 design -- different export types carry different columns (requirement #1's schema-mismatch

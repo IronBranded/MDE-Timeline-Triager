@@ -42,13 +42,31 @@ Get-MDEDetectionCatalog | Measure-Object   # should report 13 rules
 
 ## Quick Start
 
+**Interactive (no cmdlet syntax to remember):**
+
+```powershell
+.\Start-MDETT.ps1
+```
+
+Drops into a numbered menu -- Full Triage, decode a command line, validate a config file,
+view the detection catalog, or run a diagnostic check. Full Triage prompts for the CSV path
+and any optional configs, then runs the pipeline with `-OutputPath` omitted, so the report
+and CSV land straight in your Downloads folder (Windows and macOS -- see "Output Location and
+Naming" below) named `MDETT-<date>-Report.html` / `MDETT-<date>-Findings.csv`, and a quick
+severity-count recap prints to the console when it's done. This is a thin wrapper around the
+same cmdlets below -- nothing here is logic that isn't independently Pester-tested.
+
+**Scripted / one-liner:**
+
 ```powershell
 Invoke-MDETriage -Path .\host01-timeline.csv -OutputPath .\out
 ```
 
 This parses the export, runs the full built-in detection catalog, reconstructs process
 lineage, and writes `out\MDETimelineTriage-Report.html` (open it in any browser -- no
-internet connection needed) and `out\MDETimelineTriage-Findings.csv`.
+internet connection needed) and `out\MDETimelineTriage-Findings.csv`. Omit `-OutputPath`
+entirely for the same Downloads-folder-plus-dated-names behavior the interactive launcher
+uses.
 
 With baseline noise suppression, case-specific IOCs, redaction, and local time enabled:
 
@@ -81,7 +99,7 @@ The primary entry point. Runs the full pipeline (parse -> detect -> score -> cor
 lineage -> render HTML + CSV) in one call.
 
 ```powershell
-Invoke-MDETriage -Path <String> -OutputPath <String>
+Invoke-MDETriage -Path <String> [-OutputPath <String>] [-DatedFileNames]
     [-BaselineConfigPath <String>] [-CustomIOCConfigPath <String>]
     [-Redact] [-LocalTime] [-ReportSizeThreshold <Int32>]
     [-WhatIf] [-Confirm]
@@ -90,7 +108,8 @@ Invoke-MDETriage -Path <String> -OutputPath <String>
 | Parameter | Mandatory | Default | Notes |
 |---|---|---|---|
 | `Path` | Yes | -- | The source MDE timeline CSV. |
-| `OutputPath` | Yes | -- | Directory for the HTML report and CSV; created if missing. |
+| `OutputPath` | No | Downloads folder | Directory for the HTML report and CSV; created if missing. Omit for automatic Downloads-folder resolution plus `-DatedFileNames` -- see "Output Location and Naming" below. |
+| `DatedFileNames` | No | auto-on if `OutputPath` omitted | Names outputs `MDETT-<yyyy-MM-dd>-Report.html`/`-Findings.csv` instead of the fixed traditional names. |
 | `BaselineConfigPath` | No | none | JSON baseline/exclusion config. |
 | `CustomIOCConfigPath` | No | none | JSON custom IOC config. |
 | `Redact` | No | off | Pseudonymize usernames/hostnames in the HTML report. |
@@ -107,7 +126,7 @@ Parses a single MDE timeline CSV export into normalized, typed pipeline objects.
 -- no detection, no report.
 
 ```powershell
-Import-MDETimeline -Path <String>
+Import-MDETimeline -Path <String> [-SkipRowCountPreScan]
 ```
 
 ```powershell
@@ -123,6 +142,14 @@ schema Microsoft publishes -- is classified `Unrecognized` and still parsed usin
 columns are present. Malformed rows (truncated, invalid byte sequences for the detected
 encoding) are skipped and counted, never a terminating error.
 
+By default, this cmdlet reads through the file once first (cheaply -- no field-splitting, no
+object construction) to get an exact row count, so `Write-Progress` reports genuine "row N of
+M" percentages during the real parse instead of a bytes-read estimate. Measured cost on a
+real 200,000-row/71MB file: **+~22% to total parse time** (30.46s with the pre-scan vs.
+24.97s without, in the environment this was measured in -- real numbers, not a guess). Pass
+`-SkipRowCountPreScan` to skip it and fall back to the byte-based estimate if you'd rather
+trade progress accuracy for a faster start.
+
 ### Invoke-MDEDetection
 
 Runs the built-in detection catalog, any supplied custom IOC entries, baseline exclusion
@@ -134,6 +161,7 @@ for that row's ActionType).
 ```powershell
 Invoke-MDEDetection -InputObject <PSObject[]>
     [-BaselineConfigPath <String>] [-CustomIOCConfigPath <String>]
+    [-ResponseActionKeywords <String[]>]
     [-WhatIf] [-Confirm]
 ```
 
@@ -153,7 +181,8 @@ Renders the HTML report and enriched CSV from finding objects. Kept separate fro
 so a report can be re-rendered (e.g. toggling `-Redact`) without re-running detection.
 
 ```powershell
-New-MDEReport -InputObject <PSObject[]> -SourcePath <String> -OutputPath <String>
+New-MDEReport -InputObject <PSObject[]> -SourcePath <String>
+    [-OutputPath <String>] [-DatedFileNames]
     [-Redact] [-LocalTime] [-ReportSizeThreshold <Int32>]
     [-WhatIf] [-Confirm]
 ```
@@ -164,6 +193,19 @@ $findings | New-MDEReport -SourcePath .\host01-timeline.csv -OutputPath .\out -R
 
 Implements `SupportsShouldProcess`: `-WhatIf` reports which files would be written (flagging
 if that would overwrite an existing report) without writing them.
+
+**Output Location and Naming.** `-OutputPath` is optional. Supplied explicitly, behavior is
+unchanged from earlier versions: fixed `MDETimelineTriage-Report.html`/
+`MDETimelineTriage-Findings.csv` names at that exact location. Omitted entirely, this cmdlet
+resolves to the current user's Downloads folder and automatically switches on
+`-DatedFileNames`, writing `MDETT-<yyyy-MM-dd>-Report.html`/`MDETT-<yyyy-MM-dd>-Findings.csv`
+(today's date, not the export's own data timeframe) instead. Downloads-folder resolution is
+cross-platform: Windows reads the actual Shell Folders registry value rather than assuming
+`%USERPROFILE%\Downloads`, so a redirected/OneDrive-managed Downloads folder still resolves
+correctly; macOS and Linux use `$HOME/Downloads` (Linux additionally tries `xdg-user-dir
+DOWNLOAD` first, if available). `-DatedFileNames` can also be combined with an explicit
+`-OutputPath` for dated names at a custom location. See `Get-MDEDownloadsFolder` in
+`Private/README.md` for the full resolution logic.
 
 ### ConvertFrom-MDEEncodedCommand
 
@@ -356,6 +398,7 @@ in real PowerShell 7.6.4:
 |---|---|
 | `Import-MDETimeline \| Invoke-MDEDetection \| New-MDEReport` as a true pipeline (no intermediate variable capture) | ~170s end-to-end, managed memory stayed at ~19MB |
 | Same work, but capturing `$rows`/`$findings` into variables between stages | Same wall-clock ballpark, but memory rose to ~1.8GB, since holding the full result set in a variable is exactly what that does in any language |
+| `Import-MDETimeline`'s row-count pre-scan (default, for accurate line-count progress) vs. `-SkipRowCountPreScan` | +~22% to parse time on the same 200K-row file (30.46s with pre-scan vs. 24.97s without) for an exact row count instead of a byte-based estimate |
 
 Two honest takeaways: the memory-bounded design holds up as intended for pipeline usage
 (19MB to process a 74MB file is genuinely lean), but throughput is roughly 1,000-1,200

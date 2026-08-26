@@ -64,8 +64,22 @@ function New-MDEReport {
         Used to compute the SHA-256 hash recorded in the report header.
 
     .PARAMETER OutputPath
-        Directory to write the HTML report and enriched CSV into. Mandatory. Created if it
-        does not already exist.
+        Directory to write the HTML report and enriched CSV into. Optional. Created if it
+        does not already exist. When omitted entirely, resolves to the current user's
+        Downloads folder (cross-platform -- see Get-MDEDownloadsFolder) and automatically
+        switches on -DatedFileNames, so a bare `New-MDEReport` with no path/naming details
+        supplied still lands somewhere sensible and findable. Explicitly supplying
+        -OutputPath keeps the traditional fixed file names unless -DatedFileNames is also
+        given.
+    .PARAMETER DatedFileNames
+        Switch. Names the two output files `MDETT-<yyyy-MM-dd>-Report.html` and
+        `MDETT-<yyyy-MM-dd>-Findings.csv` (today's date) instead of the fixed
+        `MDETimelineTriage-Report.html`/`MDETimelineTriage-Findings.csv`. Automatically
+        turned on when -OutputPath is omitted; can also be combined with an explicit
+        -OutputPath for dated names at a custom location. Note this names files by the date
+        the report was *generated*, not by the export's own data timeframe (see the
+        executive summary's incident overview for that). Optional, default $false unless
+        -OutputPath is omitted.
 
     .PARAMETER Redact
         Switch. Masks usernames and hostnames in the HTML report with stable per-value
@@ -132,10 +146,13 @@ function New-MDEReport {
         [string]
         $SourcePath,
 
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
+        [Parameter()]
         [string]
         $OutputPath,
+
+        [Parameter()]
+        [switch]
+        $DatedFileNames,
 
         [Parameter()]
         [switch]
@@ -168,8 +185,24 @@ function New-MDEReport {
     }
 
     end {
-        $htmlPath = Join-Path -Path $OutputPath -ChildPath 'MDETimelineTriage-Report.html'
-        $csvPath = Join-Path -Path $OutputPath -ChildPath 'MDETimelineTriage-Findings.csv'
+        $resolvedOutputPath = $OutputPath
+        $useDatedNames = $DatedFileNames.IsPresent
+
+        if ([string]::IsNullOrWhiteSpace($resolvedOutputPath)) {
+            $resolvedOutputPath = Get-MDEDownloadsFolder
+            $useDatedNames = $true
+            Write-Verbose "New-MDEReport: -OutputPath not supplied -- resolved to Downloads folder '$resolvedOutputPath', using MDETT-dated file names."
+        }
+
+        if ($useDatedNames) {
+            $dateStamp = (Get-Date).ToString('yyyy-MM-dd')
+            $htmlPath = Join-Path -Path $resolvedOutputPath -ChildPath "MDETT-$dateStamp-Report.html"
+            $csvPath = Join-Path -Path $resolvedOutputPath -ChildPath "MDETT-$dateStamp-Findings.csv"
+        }
+        else {
+            $htmlPath = Join-Path -Path $resolvedOutputPath -ChildPath 'MDETimelineTriage-Report.html'
+            $csvPath = Join-Path -Path $resolvedOutputPath -ChildPath 'MDETimelineTriage-Findings.csv'
+        }
 
         $htmlExists = Test-Path -Path $htmlPath -PathType Leaf
         $csvExists = Test-Path -Path $csvPath -PathType Leaf
@@ -184,9 +217,9 @@ function New-MDEReport {
             return
         }
 
-        if (-not (Test-Path -Path $OutputPath -PathType Container)) {
-            Write-Verbose "New-MDEReport: creating output directory '$OutputPath'."
-            [void](New-Item -Path $OutputPath -ItemType Directory -Force)
+        if (-not (Test-Path -Path $resolvedOutputPath -PathType Container)) {
+            Write-Verbose "New-MDEReport: creating output directory '$resolvedOutputPath'."
+            [void](New-Item -Path $resolvedOutputPath -ItemType Directory -Force)
         }
 
         Write-Verbose "New-MDEReport: computing SHA-256 for '$SourcePath'..."

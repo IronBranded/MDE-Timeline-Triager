@@ -1,0 +1,5 @@
+Timestamp,DeviceId,DeviceName,ActionType,FileName,FolderPath,SHA1,ProcessId,ProcessCommandLine,ProcessIntegrityLevel,ProcessCreationTime,AccountName,AccountObjectId,InitiatingProcessFileName,InitiatingProcessId,InitiatingProcessCommandLine,InitiatingProcessParentFileName,ProcessVersionInfoCompanyName,ProcessTokenElevation,ReportId
+2026-08-10T15:00:00.000Z,b2c3d4e5f6a1,WKSTN-TEST-001,ProcessCreated,powershell.exe,C:\Windows\System32\WindowsPowerShell\v1.0,3f786850e387550fdab836ed7e6dc881de23001b,5001,"powershell.exe -Command ""Write-Output 'line one
+line two
+line three'""",High,2026-08-10T15:00:00.000Z,jdoe,4a0b1c2d-88f5-4c32-a066-9f2e3d44b812,explorer.exe,2210,C:\Windows\explorer.exe,userinit.exe,Microsoft Corporation,TokenElevationTypeLimited,600000001
+2026-08-10T15:01:00.000Z,b2c3d4e5f6a1,WKSTN-TEST-001,ProcessCreated,cmd.exe,C:\Users\jdoe\AppData\Roaming\SketchyApp,2ef7bde608ce5404e97d5f042f95f89f1c232871,5002,C:\Users\jdoe\AppData\Roaming\SketchyApp\updater.exe -run,Medium,2026-08-10T15:01:00.000Z,jdoe,4a0b1c2d-88f5-4c32-a066-9f2e3d44b812,explorer.exe,2210,C:\Windows\explorer.exe,userinit.exe,Unknown Vendor,TokenElevationTypeLimited,600000002

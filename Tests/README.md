@@ -10,7 +10,11 @@ arrays are expanded:
   dedicated regression test for the DeviceFileEvents/DeviceImageLoadEvents misclassification
   bug caught during Phase 2), encoding detection (UTF-16LE, UTF-8 BOM), the CSV quoting
   engine, data-corruption vs. schema-mismatch handling kept distinct, the missing-header
-  heuristic, evidence integrity (source file unmodified).
+  heuristic, evidence integrity (source file unmodified), and the row-count pre-scan
+  (`Get-MDECsvRowCount` matches the real parsed row count exactly, including on
+  `embedded-newline-test.csv` -- a fixture built specifically to prove the pre-scan counts a
+  quoted field's embedded newline as part of one row, not as an extra row, which is exactly
+  the correctness property a naive `'\n'`-count approach would have gotten wrong).
 - `ConvertFrom-MDEEncodedCommand.Tests.ps1` -- all 4 in-scope decode methods individually,
   plus confirming out-of-scope obfuscation is flagged (`PossiblyObfuscated`) rather than
   guessed at, and that `Original` is never mutated.
@@ -18,26 +22,38 @@ arrays are expanded:
   positive-case fixture row, a negative control confirming zero findings across all 9 benign
   fixtures, the Severity/Confidence independence principle asserted directly against the
   catalog, multi-signal combination and process-lineage reconstruction, baseline-exclusion
-  precedence (including that it throws on a malformed config), custom IOC matching, and
-  `-WhatIf` returning no findings.
+  precedence (including that it throws on a malformed config), custom IOC matching,
+  `-WhatIf` returning no findings, and the RunSummary object (export timeframe, both
+  goalposts, alert-linked rows, suppressed-finding detail).
 - `New-MDEReport.Tests.ps1` -- `-WhatIf` writes nothing (even into an existing directory),
   real rendering produces both outputs with the source hash present in both, UTC labeling,
   a genuine HTML-escaping test against a `</script><script>` payload (not a vacuous check
   against fixtures with no adversarial content), redaction on and off, evidence integrity,
-  and no CDN references anywhere in the rendered file.
+  no CDN references anywhere in the rendered file, and the optional-`-OutputPath` behavior:
+  explicit `-OutputPath` alone still uses the traditional fixed names (backward compatibility
+  guard), explicit `-OutputPath` with `-DatedFileNames` uses dated names at that location,
+  and omitting `-OutputPath` entirely resolves to `Get-MDEDownloadsFolder`'s actual result
+  with dated names auto-enabled -- including under `-WhatIf`, which must report the resolved
+  path and still create nothing.
 - `Test-MDEBaseline.Tests.ps1` -- auto-detection of config type, forced `-ConfigType`
   mismatches correctly failing, exact per-entry error pinpointing (not just a pass/fail),
   empty-array-is-valid, and read-only guarantee.
 - `Invoke-MDETriage.Tests.ps1` -- added after a real gap was found and fixed (see
-  CHANGELOG.md's `[Unreleased]` entry): `Invoke-MDETriage` composes the other three cmdlets
+  CHANGELOG.md's `[0.2.0]` entry): `Invoke-MDETriage` composes the other three cmdlets
   internally and had never once been called directly by anything in this suite, which is
   exactly how it shipped as a hard-coded stub for five build phases without anything
   catching it. Tests here call `Invoke-MDETriage` itself -- `-WhatIf`, real end-to-end
   execution, parameter pass-through (`-Redact`, `-BaselineConfigPath`), and evidence
-  integrity -- never its component stages.
+  integrity -- never its component stages. Also carries a second, later regression guard of
+  the same shape: this cmdlet declares its own separate `-OutputPath` parameter rather than
+  inheriting New-MDEReport's, and when New-MDEReport's was made optional, this cmdlet's copy
+  was initially missed -- found only by piping simulated input through the real interactive
+  launcher end-to-end, not by reading the code. A dedicated test now asserts `-OutputPath` is
+  genuinely non-mandatory (inspecting the actual parameter metadata, not just that a default
+  value exists) alongside a real omitted-`-OutputPath` execution test.
 
 Run with `Invoke-Pester -Path .\Tests\` from the module root. **This suite has actually run
-against real Pester and passes 120/120** -- see README.md's "Getting Pester Running Without
+against real Pester and passes 130/130** -- see README.md's "Getting Pester Running Without
 the PowerShell Gallery" section if `Invoke-Pester` isn't already available to you (Pester
 4.10.1, unlike 5.x/6.x, needs no `dotnet` SDK and no PowerShell Gallery access).
 
@@ -50,8 +66,11 @@ unlike Pester, has never had a pure-PowerShell version to fall back to (checked 
 indexed release through its latest; every one has a compiled C# core). Not a PSScriptAnalyzer
 replacement -- 8 categories out of several dozen real rules -- but self-tested against a
 deliberately bad scratch file before being trusted, and genuine AST-based analysis rather
-than a manual read-through. Run with `pwsh -File .\Tests\Invoke-ManualLint.ps1`: 0 findings
-across all 50 module files.
+than a manual read-through. Includes one deliberate, documented exception matching the real
+`[SuppressMessageAttribute]` on `Start-MDETT.ps1`: `PSAvoidUsingWriteHost` is correctly
+expected there (an interactive console launcher, not a pipeline-composable module function --
+see that file's own `.NOTES`). Run with `pwsh -File .\Tests\Invoke-ManualLint.ps1`: 0 findings
+across all 57 module files.
 
 **`Invoke-ManualValidation.ps1`** -- not a Pester file (no `Describe`/`It`, so Pester's
 auto-discovery won't pick it up as a test). The actual Pester test runner needs a `dotnet`
@@ -188,3 +207,20 @@ values for every property being asserted on:
   first-suspicious-activity "left goalpost"), an `AlertTriggered`-ActionType row (the
   alert-linked-events heuristic), and a `MachineIsolationRequested`-ActionType row
   (establishes both the export's end and the first-response "right goalpost" heuristic).
+
+**Row-count pre-scan correctness** (`Import-MDETimeline.Tests.ps1`'s "Row-count pre-scan and
+line-count-based progress" context):
+- `embedded-newline-test.csv` -- 5 physical lines but exactly 2 logical rows, one of which
+  spans 3 physical lines because its `ProcessCommandLine` field contains an embedded newline
+  inside quotes. Exists specifically to prove `Get-MDECsvRowCount` counts logical rows, not
+  physical lines -- a naive `'\n'`-count would say 4 data rows here; the correct answer,
+  matching what `Import-MDETimeline`'s real parse actually produces, is 2.
+
+**Interactive launcher** (`Start-MDETT.ps1`, at the module root, not under `Tests/`): no
+Pester coverage of its own, since it's a thin presentation/prompting wrapper around cmdlets
+that are already independently tested -- see README.md's Quick Start section. Verified
+instead by piping simulated keystrokes through the real script end-to-end (every menu
+option, including the full triage flow and its console recap), which is what caught the
+`Invoke-MDETriage -OutputPath` regression described above -- reading the launcher's code
+would not have caught it, since the bug was in a cmdlet the launcher calls, not in the
+launcher itself.
