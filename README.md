@@ -414,105 +414,52 @@ you care about and run the pipeline above with `[System.Diagnostics.Stopwatch]`.
 ## Verification Status
 
 What "verified" means varies across this module, and it's worth being precise rather than
-letting the word do too much work:
+letting the word do too much work. Full narrative detail on any of these -- what broke, how
+it was found, exactly how it was fixed -- lives in `CHANGELOG.md`; this section is the
+current-state summary, not the story.
 
-- **The actual Pester suite has run and passed.** `Invoke-Pester` needed a `dotnet` SDK to
-  build from source for Pester 6.x (the latest major version) -- unavailable in this
-  environment, and initially treated as a hard blocker. Pester 4.10.1 is pure PowerShell with
-  no compiled component and needs no build step; it was downloaded directly from GitHub
-  (`codeload.github.com`, no PowerShell Gallery access needed) and imports cleanly. Running
-  the real, unmodified `Tests/*.Tests.ps1` suite against it surfaced 3 real failures on the
-  first attempt -- not tooling noise, but two genuine bugs in the test files themselves (one
-  checked the wrong CSV field, one tried to inspect a private function via `Get-Command` from
-  outside the module's scope, which cannot see it by design) and one genuine bug in
-  `Invoke-MDEDetection`'s own `.NOTES` help text (a cross-reference to `.DESCRIPTION` that
-  happened to wrap to the start of a line, which PowerShell's comment-help parser misread as
-  a second `.DESCRIPTION` section, corrupting the entire parsed help output). All three
-  fixed and confirmed: **120/120 tests passing**, via `Invoke-Pester -Script .\Tests\*.Tests.ps1`.
-  Pester wasn't kept in the shipped module (a 75MB runtime download and a 4MB test-framework
-  source tree aren't appropriate to bundle into a module that's otherwise a few hundred KB);
-  see "Getting Pester Running" below to reproduce this yourself in under a minute.
-- **Also actually executed in real PowerShell 7.6.4**: every cmdlet directly (including
-  `Invoke-MDETriage`, not just the three stages it composes), all 13 detection rules against
-  their positive/negative fixtures, baseline/custom-IOC precedence, process lineage and
-  multi-signal combination, the telemetry-mapping correlation (requirement #2), redaction,
-  evidence hashing, HTML escaping against a real adversarial payload, and the 200,000-row
-  performance run above. `Tests/Invoke-ManualValidation.ps1` (71 assertions, 71 passing) is
-  the record of this and ships in the module; it's not a substitute for the Pester suite
-  above, but it does independently corroborate the same module behavior via a different code
-  path, and remains useful for anyone who can't get Pester 4.x running either.
-- **PSScriptAnalyzer**: still not run, and this is a harder stop than Pester was, not the
-  same one with a different version number. Checked its earliest indexed release (1.1.0,
-  from PSScriptAnalyzer's first year) through a mid-life release (1.18.2) through the current
-  latest (1.25.0): every one already has `Rules.csproj`/`Engine.csproj`/a `.sln`, and every
-  individual rule -- as far back as the project goes -- is implemented as a compiled `.cs`
-  file, not PowerShell. Unlike Pester, where the compiled component was a later addition to
-  an originally-pure-PowerShell project (making an older major version a genuine escape
-  hatch), PSScriptAnalyzer has been architecturally built on a compiled .NET core since
-  inception -- there's no equivalent version to fall back to. (Compiling its C# directly via
-  `Add-Type`, bypassing `dotnet build` entirely, was considered and set aside: the
-  Engine/Rules assemblies have real interdependencies and likely NuGet package references
-  that `dotnet restore` resolves automatically and `Add-Type` has no equivalent for --
-  hand-resolving that reliably was judged more likely to produce a subtly-wrong analyzer than
-  a working one, which would be worse than not running it at all.)
-
-  What *is* achievable without it: `Tests/Invoke-ManualLint.ps1` uses
-  `[System.Management.Automation.Language.Parser]` -- the AST parser built into the
-  PowerShell engine itself, the same underlying technology PSScriptAnalyzer is built on, with
-  no external dependency -- to cover 8 of PSScriptAnalyzer's actual rule categories
-  (`PSUseApprovedVerbs`, `PSAvoidUsingCmdletAliases`, `PSAvoidUsingWriteHost`,
-  `PSAvoidUsingEmptyCatchBlock`, `PSAvoidUsingInvokeExpression`, `PSAvoidGlobalVars`,
-  `PSAvoidUsingPlainTextForPassword`, and a heuristic version of
-  `PSUseDeclaredVarsMoreThanAssignments`). This is *not* a PSScriptAnalyzer replacement --
-  it's 8 checks out of PSScriptAnalyzer's several dozen, and the unused-variable check in
-  particular is a simplified approximation, not the real algorithm. Before trusting its clean
-  result against the real module, it was run against a deliberately bad scratch file
-  containing one instance of each of the 6 non-parse-error/non-verb issues, confirming all 6
-  were actually caught -- a zero-findings result from an unvalidated linter would have been
-  worthless. Run it with `pwsh -File .\Tests\Invoke-ManualLint.ps1`: **0 findings across all
-  50 module files** (Public/ and Private/, excluding Tests/ itself).
-- **The generated HTML report has actually been executed, not just syntax-checked.** No
-  browser is available in this sandbox, but `jsdom` (via `npm install jsdom`, no external
-  network dependency beyond the npm registry already in reach) provides a real DOM and
-  actually runs the report's JavaScript against it -- a materially stronger test than
-  checking that the JS parses, since jsdom executes it and throws on the same runtime errors
-  a browser would. Every tab was clicked programmatically (the report lazily renders each
-  view -- table, tree, network graph, swimlane -- only when its tab is activated, so simply
-  loading the page and checking afterward is not enough) across three scenarios: the
-  standard 7-finding report, a 1-finding report, and a 0-finding report.
-
-  **This caught a real, previously-shipped bug**: with exactly one finding, `ConvertTo-Json`
-  collapses a genuinely single-element array into a bare JSON object rather than a
-  one-element array -- a well-known PowerShell serialization quirk. The report's
-  `findings-data` JSON island silently became `{...}` instead of `[{...}]`, and the
-  swimlane view's client-side JS threw `TypeError: findingsData.filter is not a function`
-  the moment its tab was clicked. No prior test in this module ever exercised a report with
-  exactly one finding -- every fixture used throughout this build had 0, 2, 4, or 7. Fixed in
-  `ConvertTo-MDEJsonForScriptEmbed` with a `-ForceArray` switch, applied only to the one call
-  site that's genuinely array-shaped at the top level (the findings themselves -- the tree
-  and network JSON islands are single objects whose own Nodes/Edges properties are unaffected
-  by this collapse, confirmed directly rather than assumed). The first version of this fix
-  also shipped with its own bug -- it computed the correctly-wrapped JSON string but never
-  actually returned the wrapped version -- caught by re-running the same jsdom test
-  immediately rather than trusting the fix without re-verifying it.
-
-  Confirmed clean after the fix, across all three finding-count scenarios, clicking every
-  tab: **zero runtime errors**, and every DOM-state check (table rows present and matching
-  the real finding count, tree/network/swimlane SVG content present when their data warrants
-  it, severity styling applied) passes. This still isn't pixel-level visual confirmation --
-  jsdom has no real layout/rendering engine, so a CSS or visual-layout issue could still
-  exist undetected -- but it is a real, substantially stronger claim than "the JavaScript has
-  no syntax errors."
+- **The actual Pester suite has run and passed: 130/130**, via real Pester 4.10.1 (pure
+  PowerShell, no `dotnet` SDK needed -- see "Getting Pester Running" below), not a
+  hand-written substitute. Three real bugs surfaced the first time this suite ever ran
+  against real Pester, all fixed; see `CHANGELOG.md`'s `[0.2.0]` entry.
+- **Every cmdlet has been executed directly in real PowerShell 7.6.4** -- including
+  `Invoke-MDETriage` itself, not just the three stages it composes -- against every fixture
+  in the project: all 13 detection rules, baseline/custom-IOC precedence, process lineage
+  and multi-signal combination, the telemetry-mapping correlation, redaction, evidence
+  hashing, adversarial-payload HTML escaping, and a 200,000-row performance run.
+  `Tests/Invoke-ManualValidation.ps1` (71/71 passing) is the record of this and ships in the
+  module -- not a Pester substitute, but useful for anyone who can't get Pester running
+  either.
+- **The generated HTML report has actually been executed** (via `jsdom`, not a real
+  browser -- none available in the environment this was built in), not just syntax-checked:
+  every tab clicked programmatically across 0/1/7-finding report scenarios, zero runtime
+  errors. This is materially stronger than checking the JS parses, and it caught a real,
+  previously-shipped bug (a report with exactly one finding threw a client-side
+  `TypeError` -- see `CHANGELOG.md`'s `[0.2.0]` entry) -- but it still isn't pixel-level
+  visual confirmation; a CSS/layout issue wouldn't show up in either jsdom or a syntax check.
+- **`Tests/Invoke-ManualLint.ps1`** (8 of PSScriptAnalyzer's real rule categories,
+  AST-based, self-tested against a deliberately bad file before being trusted -- not a
+  PSScriptAnalyzer replacement): **0 findings across all 57 module files.**
+- **Real PSScriptAnalyzer has never run, and this is architecturally out of reach in the
+  environment this module was built in, not just inconvenient.** Unlike Pester (whose 4.x
+  line is pure PowerShell with no compiled component), PSScriptAnalyzer has had a compiled
+  C# core since its earliest indexed release -- there's no equivalent pure-PowerShell
+  version to fall back to. `.github/workflows/ci.yml` runs it for real on GitHub's hosted
+  runners (which have PowerShell Gallery access this environment didn't), across Windows
+  PowerShell 5.1, PowerShell 7+ on Windows, and PowerShell 7+ on Linux -- its first genuine
+  test is your first push.
 - **Known-by-design gaps, not defects**: requirement #2's telemetry mapping is scoped to
   verified, well-established correlations for the ActionTypes this module's rules and
   fixtures reference (see `Data/TelemetryMapping.json`'s own header note), not an exhaustive
   enumeration of every ActionType MDE can emit. ETW blinding and LOLDriver abuse remain
-  uncovered by any rule.
+  uncovered by any rule. `Invoke-MDEDetection -ResponseActionKeywords`'s "first MDE
+  response" estimate is a documented heuristic, not a confirmed match against MDE's real
+  ActionType vocabulary -- see "Report Views" above.
+- **Everything above was tested against synthetic data.** No fixture in this project has
+  ever been a genuine (even sanitized) Defender-portal export.
 
-Real PSScriptAnalyzer remains architecturally out of reach regardless of environment (see
-above). If you have a moment to actually look at a generated report in a real browser, that
-remains the one meaningful gap jsdom's execution testing can't close -- visual/CSS layout
-issues wouldn't show up in either.
+If you have a moment to look at a generated report in a real browser, that remains the one
+meaningful gap `jsdom` execution testing can't close on its own.
 
 ## Known Limitations
 
@@ -581,7 +528,7 @@ See `Tests/README.md` for what each covers.
 
 Pester 6.x (and 5.x) require a `dotnet` SDK to build their compiled component from source.
 **Pester 4.10.1 does not** -- it's pure PowerShell, no build step, and every test in this
-module's `Tests/*.Tests.ps1` suite runs correctly under it (confirmed: 120/120 passing). If
+module's `Tests/*.Tests.ps1` suite runs correctly under it (confirmed: 130/130 passing). If
 `Invoke-Pester` isn't already on your machine and you can't reach the PowerShell Gallery:
 
 ```powershell
