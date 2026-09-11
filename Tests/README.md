@@ -53,7 +53,7 @@ arrays are expanded:
   value exists) alongside a real omitted-`-OutputPath` execution test.
 
 Run with `Invoke-Pester -Path .\Tests\` from the module root. **This suite has actually run
-against real Pester and passes 130/130** -- see README.md's "Getting Pester Running Without
+against real Pester and passes 134/134** -- see README.md's "Getting Pester Running Without
 the PowerShell Gallery" section if `Invoke-Pester` isn't already available to you (Pester
 4.10.1, unlike 5.x/6.x, needs no `dotnet` SDK and no PowerShell Gallery access).
 

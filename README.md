@@ -495,7 +495,7 @@ letting the word do too much work. Full narrative detail on any of these -- what
 it was found, exactly how it was fixed -- lives in `CHANGELOG.md`; this section is the
 current-state summary, not the story.
 
-- **The actual Pester suite has run and passed: 130/130**, via real Pester 4.10.1 (pure
+- **The actual Pester suite has run and passed: 134/134**, via real Pester 4.10.1 (pure
   PowerShell, no `dotnet` SDK needed -- see "Getting Pester Running" below), not a
   hand-written substitute. Three real bugs surfaced the first time this suite ever ran
   against real Pester, all fixed; see `CHANGELOG.md`'s `[0.2.0]` entry.
@@ -605,7 +605,7 @@ See `Tests/README.md` for what each covers.
 
 Pester 6.x (and 5.x) require a `dotnet` SDK to build their compiled component from source.
 **Pester 4.10.1 does not** -- it's pure PowerShell, no build step, and every test in this
-module's `Tests/*.Tests.ps1` suite runs correctly under it (confirmed: 130/130 passing). If
+module's `Tests/*.Tests.ps1` suite runs correctly under it (confirmed: 134/134 passing). If
 `Invoke-Pester` isn't already on your machine and you can't reach the PowerShell Gallery:
 
 ```powershell
