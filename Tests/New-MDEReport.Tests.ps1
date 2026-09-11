@@ -212,4 +212,51 @@ Describe 'New-MDEReport' {
             }
         }
     }
+
+    Context 'Report size threshold summarization (requirement #8) -- never tested at any scale before this' {
+        # A real 200,000-row/6,000-finding file was used to confirm this end-to-end
+        # (sizeThresholdApplied=true, exactly 5,000 of 6,000 findings embedded in the HTML,
+        # DataTables' own API confirming all 5,000 are genuinely in its data model just
+        # paginated for display, the CSV still holding the complete 6,000) -- see CHANGELOG.md.
+        # These tests exercise the identical code path cheaply, using -ReportSizeThreshold to
+        # trigger it with the existing small fixture rather than needing a large file.
+        BeforeAll {
+            $script:thresholdSourcePath = Join-Path $fixturesPath 'DeviceProcessEvents-detection-tests.csv'
+            $script:thresholdOutDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "MDEThreshold_$([guid]::NewGuid())"
+            Import-MDETimeline -Path $thresholdSourcePath | Invoke-MDEDetection | New-MDEReport -SourcePath $thresholdSourcePath -OutputPath $thresholdOutDir -ReportSizeThreshold 2
+        }
+        AfterAll {
+            if (Test-Path $thresholdOutDir) { Remove-Item -Path $thresholdOutDir -Recurse -Force }
+        }
+
+        It 'Sets sizeThresholdApplied=true in report-meta when findings exceed the threshold' {
+            $html = Get-Content (Join-Path $thresholdOutDir 'MDETimelineTriage-Report.html') -Raw
+            $meta = ($html | Select-String -Pattern '(?s)<script type="application/json" id="report-meta">(.*?)</script>').Matches[0].Groups[1].Value | ConvertFrom-Json
+            $meta.sizeThresholdApplied | Should -Be $true
+            $meta.totalFindingCount | Should -BeGreaterThan 2
+            $meta.displayedFindingCount | Should -Be 2
+        }
+
+        It 'Embeds only the top-N findings in the HTML but keeps the complete set in the CSV' {
+            $html = Get-Content (Join-Path $thresholdOutDir 'MDETimelineTriage-Report.html') -Raw
+            $findingsJson = ($html | Select-String -Pattern '(?s)<script type="application/json" id="findings-data">(.*?)</script>').Matches[0].Groups[1].Value | ConvertFrom-Json
+            @($findingsJson).Count | Should -Be 2
+            $csv = Import-Csv (Join-Path $thresholdOutDir 'MDETimelineTriage-Findings.csv')
+            @($csv).Count | Should -BeGreaterThan 2
+        }
+
+        It 'Does not apply the threshold when findings are at or below it' {
+            $outDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "MDEThresholdNotApplied_$([guid]::NewGuid())"
+            try {
+                Import-MDETimeline -Path $thresholdSourcePath | Invoke-MDEDetection | New-MDEReport -SourcePath $thresholdSourcePath -OutputPath $outDir -ReportSizeThreshold 500
+                $html = Get-Content (Join-Path $outDir 'MDETimelineTriage-Report.html') -Raw
+                $meta = ($html | Select-String -Pattern '(?s)<script type="application/json" id="report-meta">(.*?)</script>').Matches[0].Groups[1].Value | ConvertFrom-Json
+                $meta.sizeThresholdApplied | Should -Be $false
+                $meta.displayedFindingCount | Should -Be $meta.totalFindingCount
+            }
+            finally {
+                if (Test-Path $outDir) { Remove-Item -Path $outDir -Recurse -Force }
+            }
+        }
+    }
 }

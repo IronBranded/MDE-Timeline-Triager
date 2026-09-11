@@ -442,16 +442,51 @@ in real PowerShell 7.6.4:
 | Same work, but capturing `$rows`/`$findings` into variables between stages | Same wall-clock ballpark, but memory rose to ~1.8GB, since holding the full result set in a variable is exactly what that does in any language |
 | `Import-MDETimeline`'s row-count pre-scan (default, for accurate line-count progress) vs. `-SkipRowCountPreScan` | +~22% to parse time on the same 200K-row file (30.46s with pre-scan vs. 24.97s without) for an exact row count instead of a byte-based estimate |
 
-Two honest takeaways: the memory-bounded design holds up as intended for pipeline usage
-(19MB to process a 74MB file is genuinely lean), but throughput is roughly 1,000-1,200
-rows/second overall, meaning a multi-million-row export would take on the order of 30-60
-minutes, not seconds. `Invoke-MDEDetection` (13 rules evaluated per row) is the slower stage
-of the three. This module is built for thorough offline/batch triage, not real-time
-processing -- that's an accurate characterization to plan around, not a defect, but "handles
-potentially massive CSV files" should be read as "won't run out of memory or crash," not "is
-fast at extreme scale." If you need to re-verify this yourself, generate a synthetic CSV with
-the same column shape as `Tests/Fixtures/DeviceProcessEvents-happy.csv` at whatever row count
-you care about and run the pipeline above with `[System.Diagnostics.Stopwatch]`.
+Throughput is roughly 1,000-1,200 rows/second overall, meaning a multi-million-row export
+takes on the order of 30-60 minutes, not seconds. `Invoke-MDEDetection` (13 rules evaluated
+per row) is the slower stage of the three. This module is built for thorough offline/batch
+triage, not real-time processing -- an accurate characterization to plan around, not a
+defect. If you need to re-verify this yourself, generate a synthetic CSV with the same
+column shape as `Tests/Fixtures/DeviceProcessEvents-happy.csv` at whatever row count you care
+about and run the pipeline above with `[System.Diagnostics.Stopwatch]`.
+
+**Memory scales with distinct-process count, not just row count -- worth knowing given
+MDE's own 7-day device-timeline export limit.** The `~19MB` figure above held for that
+specific file's data shape: a small, realistic pool of process names reused across rows.
+Prompted by the real-world 7-day export limit (confirmed directly from Microsoft's own
+documentation, not assumed) and the genuine possibility of a busy/heavily-instrumented host
+producing an export with a very large number of *distinct* processes over a full 7-day
+window, a synthetic 1,000,000-row file where every single row was a distinct process
+(deliberately worst-case for the lineage index, which is keyed per distinct process) was
+run against the pipeline -- and it OOM-killed the machine it ran on. Traced directly (not
+guessed) to the process-lineage index storing each node as a `[PSCustomObject]`, which
+carries substantial per-instance overhead in PowerShell; at real scale that compounds into
+gigabytes. Fixed by switching lineage nodes to plain hashtables -- full story, including why
+the first hypothesis (an unbounded per-parent children list) was wrong, in `CHANGELOG.md`.
+
+Re-verified after the fix at the same worst-case shape (every row a distinct process),
+scaled back to sizes this environment could complete safely after the first attempt
+destabilized the whole sandbox:
+
+| Scale (every row a distinct process) | Result |
+|---|---|
+| 200,000 rows / 71MB | 133.7s, managed memory ~14MB |
+| 500,000 rows / 176MB | 329.1s, managed memory ~14MB, peak resident memory ~1.2GB (safely bounded, with normal GC reclaim between checks -- not the unbounded growth seen before the fix) |
+
+The full 1,000,000-row worst-case scenario was **not** re-attempted after the fix: the
+first attempt at that scale had already destabilized the sandbox enough to force a full
+reboot, and a second attempt carried real, demonstrated risk for a third crash rather than
+new information the 200K/500K trend didn't already strongly suggest. Treat "handles a
+genuinely heavy, close-to-1,000,000-distinct-process 7-day export" as *well-supported by a
+clear trend*, not *directly verified at that exact scale* -- an honest distinction worth
+preserving rather than rounding up.
+
+**The report's 5,000-finding summarization threshold (requirement #8) was also confirmed
+for real for the first time** during this same investigation: a 200,000-row file with 6,000
+deliberately malicious rows correctly set `sizeThresholdApplied: true`, embedded exactly
+5,000 of the 6,000 findings in the HTML (confirmed both by parsing the embedded JSON and by
+querying DataTables' own API for its loaded record count, not just counting visible/
+paginated DOM rows), while the CSV still held the complete, uncapped 6,000.
 
 ## Verification Status
 

@@ -123,6 +123,12 @@ Describe 'Invoke-MDEDetection' {
             $findings[0].ProcessLineage.Count | Should -Be 4
             ($findings[0].ProcessLineage.FileName -join ' -> ') | Should -Be 'wininit.exe -> services.exe -> svchost.exe -> cmd.exe'
         }
+
+        It 'Represents each lineage node as a plain hashtable, not a PSCustomObject (regression guard: a genuine OOM was traced directly to PSCustomObject''s per-instance overhead at real "heavy 7-day export" scale -- see CHANGELOG.md)' {
+            $findings = @(Import-MDETimeline -Path (Join-Path $fixturesPath 'DeviceProcessEvents-lineage-tests.csv') | Invoke-MDEDetection | Select-MDEFindingOnly)
+            $findings[0].ProcessLineage[0] | Should -BeOfType [hashtable]
+            $findings[0].ProcessLineage[0].GetType().Name | Should -Not -Be 'PSCustomObject'
+        }
     }
 
     Context 'Baseline exclusion and its precedence rule (requirement #9/#10, Phase 4)' {

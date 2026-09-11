@@ -89,11 +89,13 @@ function ConvertTo-MDEReportFindingRecord {
 
     $lineageChain = @()
     if ($Finding.ProcessLineage -and $Finding.ProcessLineage.Count -gt 0) {
+        # Each element of ProcessLineage is a plain hashtable (Get-MDEProcessLineageChain),
+        # not a [PSCustomObject] -- bracket access, not dot access.
         $lineageChain = @($Finding.ProcessLineage | ForEach-Object {
                 [PSCustomObject]@{
-                    Key       = "$($_.ProcessId)|$($_.CreationTime)"
-                    FileName  = ConvertTo-MDEHtmlEncodedString -Value $(if ($_.FileName) { $_.FileName } else { '(unknown)' })
-                    ProcessId = ConvertTo-MDEHtmlEncodedString -Value ([string]$_.ProcessId)
+                    Key       = "$($_['ProcessId'])|$($_['CreationTime'])"
+                    FileName  = ConvertTo-MDEHtmlEncodedString -Value $(if ($_['FileName']) { $_['FileName'] } else { '(unknown)' })
+                    ProcessId = ConvertTo-MDEHtmlEncodedString -Value ([string]$_['ProcessId'])
                 }
             })
     }

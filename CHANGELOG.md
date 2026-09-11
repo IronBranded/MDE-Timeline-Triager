@@ -4,6 +4,75 @@ All notable changes to MDETimelineTriage are documented in this file. Format loo
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic versioning
 (`major.minor.patch`) as declared in `MDETimelineTriage.psd1`.
 
+## [0.3.1] - 2026-09-11
+
+A real, significant memory bug found, root-caused, and fixed -- prompted by a question
+about whether this module could actually handle a genuinely heavy MDE export, given MDE's
+own device-timeline export limit is 7 days (confirmed directly from Microsoft's
+documentation before treating it as a real constraint to design around, not assumed).
+
+### Fixed
+- **The process lineage index could exhaust all available memory and crash the host process
+  on a file with a large number of distinct processes** -- a realistic shape for a busy or
+  heavily-instrumented host's full 7-day export, not a contrived edge case. A synthetic
+  1,000,000-row file where every row was a distinct process (deliberately worst-case for the
+  lineage index, which is keyed per distinct process, not per row) OOM-killed the sandbox
+  this module was being verified in -- confirmed directly via `dmesg`
+  (`Out of memory: Killed process 228 (pwsh)` at ~3.9GB), not inferred from a hang or a
+  crash with no diagnostic trail.
+
+  Root-caused by reading the actual lineage code, not guessing: the first hypothesis (a
+  parent node accumulating an unbounded list of all its children, which would make a
+  "star" topology with one shared parent and many children pathological) was checked and
+  was **wrong** -- `Edges` is a simple one-to-one child-key -> parent-key hashtable, genuinely
+  O(1) per row. The real cause: each lineage node was stored as a `[PSCustomObject]`, which
+  carries substantial per-instance overhead in PowerShell (the full PSObject/extended-type-
+  system wrapper) -- a well-documented PowerShell characteristic that compounds into
+  gigabytes at real scale (hundreds of thousands to millions of distinct processes).
+
+  Fixed by switching lineage nodes from `[PSCustomObject]` to plain hashtables in
+  `Add-MDEProcessLineageNode` (the only writer) and updating the two consumers
+  (`Get-MDEProcessLineageChain`'s type annotations, and
+  `ConvertTo-MDEReportFindingRecord`, the only place that read individual node properties,
+  changed from dot access to bracket access -- plain hashtables don't support PSCustomObject's
+  dot-property syntax the same way). Verified correctness immediately after: the existing
+  4-generation lineage fixture still reconstructs the identical chain.
+
+  Re-tested at the same worst-case shape, scaled back after the *first* re-attempt at the
+  original 1,000,000-row scale destabilized the sandbox badly enough to force a full VM
+  reboot (`uptime` showed `up 0 min` afterward) rather than a clean single-process OOM kill
+  -- a second attempt at that exact scale was judged not worth a third crash given the trend
+  from smaller scales was already clear and consistent:
+  - 200,000 rows, every row a distinct process: 133.7s, ~14MB managed memory.
+  - 500,000 rows, every row a distinct process: 329.1s, ~14MB managed memory, peak resident
+    memory ~1.2GB with normal GC reclaim visible between checks (not the unbounded,
+    monotonic growth observed before the fix, which was already past 3GB and still climbing
+    at a comparable point in processing).
+
+  The full 1,000,000-row scenario was not re-verified directly post-fix -- an honest
+  distinction from "well-supported by a clear, consistent trend across two smaller scales."
+
+### Added
+- 4 new Pester tests: a direct type-check regression guard (`ProcessLineage` elements must
+  be `[hashtable]`, never `[PSCustomObject]`, tied explicitly to this bug in the test's own
+  description so a future regression is legible, not just red), and 3 tests for requirement
+  #8's report-size-threshold summarization -- which had never been tested at any scale,
+  small or large, before this investigation prompted checking. Uses a small existing fixture
+  with a deliberately low `-ReportSizeThreshold` to exercise the identical code path
+  cheaply and permanently, rather than requiring a large file for routine CI runs.
+
+### Verified (real execution)
+- **Real, first-time confirmation that requirement #8's summarization threshold actually
+  works end-to-end at real scale**: a 200,000-row file with 6,000 deliberately malicious
+  rows correctly set `sizeThresholdApplied: true` and embedded exactly 5,000 of 6,000
+  findings in the HTML -- confirmed two ways, by parsing the embedded JSON directly and by
+  querying DataTables' own client-side API (`rows().count()`) for its loaded record count
+  rather than trusting a DOM row count, which would have wrongly read as a failure (DataTables
+  paginates to ~25 visible rows by design; the first jsdom check misread this as broken until
+  checking the actual data-model count, not just what was rendered).
+- Full regression suite unaffected by the fix beyond the new tests themselves: Pester
+  134/134 (was 130), manual validation 71/71, lint 0 findings across 57 files.
+
 ## [0.3.0] - 2026-08-26
 
 Interactive launcher, line-count-based progress reporting, and cross-platform Downloads

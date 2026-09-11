@@ -22,12 +22,14 @@ function Get-MDEProcessLineageChain {
         Maximum number of parent hops to walk before stopping. Optional, default 10 (real
         Windows process trees rarely exceed 6-8 generations).
     .OUTPUTS
-        PSCustomObject[] -- ordered root-first, ending with the process at -StartKey. Empty
+        [hashtable[]] -- ordered root-first, ending with the process at -StartKey. Empty
         array if -StartKey is not a known node in the index (e.g. the row had no usable
-        process-identity columns at all).
+        process-identity columns at all). Each element is a plain hashtable
+        ({ProcessId, CreationTime, FileName, FolderPath}), not a [PSCustomObject] -- see
+        Add-MDEProcessLineageNode's .DESCRIPTION for why; access with bracket notation.
     #>
     [CmdletBinding()]
-    [OutputType([PSCustomObject[]])]
+    [OutputType([hashtable[]])]
     param(
         [Parameter(Mandatory = $true)]
         [PSObject]$Index,
@@ -45,7 +47,7 @@ function Get-MDEProcessLineageChain {
         return , @()
     }
 
-    $chain = [System.Collections.Generic.List[PSCustomObject]]::new()
+    $chain = [System.Collections.Generic.List[hashtable]]::new()
     $visited = [System.Collections.Generic.HashSet[string]]::new()
     $currentKey = $StartKey
     $hops = 0

@@ -9,6 +9,16 @@ function Add-MDEProcessLineageNode {
         record a FileName for) before being seen with full identity elsewhere in the export;
         this lets a later, richer observation fill in an earlier, sparser one, without ever
         overwriting a FileName already trusted from a prior observation.
+
+        Stores each node as a plain hashtable, not a [PSCustomObject]. This matters at real
+        scale: PSCustomObject carries substantial per-instance overhead (the full PSObject/
+        extended-type-system wrapper), and this index can genuinely reach hundreds of
+        thousands to millions of entries for a busy host's full export -- confirmed directly
+        by an OOM kill during a 1-million-distinct-process synthetic test before this fix;
+        see CHANGELOG.md. A plain hashtable carries none of that dynamic-member machinery
+        this use case never needed in the first place. Access with bracket notation
+        ($node['FileName']), not dot notation -- unlike PSCustomObject, a plain hashtable
+        does not support property-style dot access.
     .PARAMETER Nodes
         The Nodes hashtable to mutate in place. Mandatory.
     .PARAMETER Key
@@ -57,7 +67,7 @@ function Add-MDEProcessLineageNode {
     if ([string]::IsNullOrEmpty($Key)) { return }
 
     if (-not $Nodes.ContainsKey($Key)) {
-        $Nodes[$Key] = [PSCustomObject]@{
+        $Nodes[$Key] = @{
             ProcessId    = $Id
             CreationTime = $CreationTime
             FileName     = $FileName
@@ -66,8 +76,8 @@ function Add-MDEProcessLineageNode {
         return
     }
 
-    if ([string]::IsNullOrEmpty($Nodes[$Key].FileName) -and -not [string]::IsNullOrEmpty($FileName)) {
-        $Nodes[$Key].FileName = $FileName
-        $Nodes[$Key].FolderPath = $FolderPath
+    if ([string]::IsNullOrEmpty($Nodes[$Key]['FileName']) -and -not [string]::IsNullOrEmpty($FileName)) {
+        $Nodes[$Key]['FileName'] = $FileName
+        $Nodes[$Key]['FolderPath'] = $FolderPath
     }
 }
