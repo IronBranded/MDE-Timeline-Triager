@@ -34,7 +34,12 @@ arrays are expanded:
   guard), explicit `-OutputPath` with `-DatedFileNames` uses dated names at that location,
   and omitting `-OutputPath` entirely resolves to `Get-MDEDownloadsFolder`'s actual result
   with dated names auto-enabled -- including under `-WhatIf`, which must report the resolved
-  path and still create nothing.
+  path and still create nothing. Also covers `-ExportAttackNavigatorLayer`: off by default
+  (backward compatibility guard), a structurally valid v4.5 layer when set (correct domain,
+  correct technique count, correct tactic mapping), and -- using real findings from two
+  fixtures that genuinely share a technique (T1562.001, from both DEFEVA-002 and
+  DEFEVA-003) -- that the dedup logic actually collapses them into one entry listing both
+  rule IDs, not an assumption that the code does this correctly.
 - `Test-MDEBaseline.Tests.ps1` -- auto-detection of config type, forced `-ConfigType`
   mismatches correctly failing, exact per-entry error pinpointing (not just a pass/fail),
   empty-array-is-valid, and read-only guarantee.
@@ -70,7 +75,7 @@ than a manual read-through. Includes one deliberate, documented exception matchi
 `[SuppressMessageAttribute]` on `Start-MDETT.ps1`: `PSAvoidUsingWriteHost` is correctly
 expected there (an interactive console launcher, not a pipeline-composable module function --
 see that file's own `.NOTES`). Run with `pwsh -File .\Tests\Invoke-ManualLint.ps1`: 0 findings
-across all 57 module files.
+across all 58 module files.
 
 **`Invoke-ManualValidation.ps1`** -- not a Pester file (no `Describe`/`It`, so Pester's
 auto-discovery won't pick it up as a test). The actual Pester test runner needs a `dotnet`

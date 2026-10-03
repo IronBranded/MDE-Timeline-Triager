@@ -101,7 +101,7 @@ function Read-MDETTYesNo {
 }
 
 function Show-MDETTRecap {
-    param([string]$HtmlPath, [string]$CsvPath, [int]$FindingCount, [System.Collections.Generic.Dictionary[string, int]]$SeverityCounts)
+    param([string]$HtmlPath, [string]$CsvPath, [string]$NavigatorPath, [int]$FindingCount, [System.Collections.Generic.Dictionary[string, int]]$SeverityCounts)
 
     Write-Host ''
     Write-Host '--- Triage complete ---' -ForegroundColor Green
@@ -115,8 +115,27 @@ function Show-MDETTRecap {
             }
         }
     }
-    Write-Host "  Report: $HtmlPath"
-    Write-Host "  CSV:    $CsvPath"
+    Write-Host "  Report:    $HtmlPath"
+    Write-Host "  CSV:       $CsvPath"
+    if ($NavigatorPath -and (Test-Path -Path $NavigatorPath -PathType Leaf)) {
+        Write-Host "  ATT&CK:    $NavigatorPath"
+    }
+}
+
+function Open-MDETTReport {
+    param([string]$Path)
+    if (-not (Test-Path -Path $Path -PathType Leaf)) { return }
+    try {
+        Start-Process -FilePath $Path -ErrorAction Stop
+        Write-Host '  Opened in your default browser.' -ForegroundColor DarkGray
+    }
+    catch {
+        # Start-Process opening a file by path needs a GUI file-association mechanism
+        # underneath (the OS shell on Windows/macOS, xdg-open on Linux) -- not guaranteed
+        # on a headless/server Linux box, even though this launcher is itself interactive.
+        # Degrade to a one-line notice rather than let this fail the whole triage run.
+        Write-Host "  Could not auto-open the report ($($_.Exception.Message)) -- open it manually: $Path" -ForegroundColor Yellow
+    }
 }
 
 function Invoke-MDETTFullTriage {
@@ -132,7 +151,7 @@ function Invoke-MDETTFullTriage {
 
     $redact = Read-MDETTYesNo -Prompt 'Redact usernames/hostnames in the report?'
 
-    $params = @{ Path = $csvPath; Verbose = $true }
+    $params = @{ Path = $csvPath; Verbose = $true; ExportAttackNavigatorLayer = $true }
     if ($baselinePath) { $params['BaselineConfigPath'] = $baselinePath }
     if ($customIocPath) { $params['CustomIOCConfigPath'] = $customIocPath }
     if ($redact) { $params['Redact'] = $true }
@@ -152,6 +171,7 @@ function Invoke-MDETTFullTriage {
     $dateStamp = (Get-Date).ToString('yyyy-MM-dd')
     $htmlPath = Join-Path -Path $downloadsFolder -ChildPath "MDETT-$dateStamp-Report.html"
     $csvOutPath = Join-Path -Path $downloadsFolder -ChildPath "MDETT-$dateStamp-Findings.csv"
+    $navigatorOutPath = Join-Path -Path $downloadsFolder -ChildPath "MDETT-$dateStamp-AttackNavigatorLayer.json"
 
     $severityCounts = [System.Collections.Generic.Dictionary[string, int]]::new()
     $findingCount = 0
@@ -164,7 +184,8 @@ function Invoke-MDETTFullTriage {
         }
     }
 
-    Show-MDETTRecap -HtmlPath $htmlPath -CsvPath $csvOutPath -FindingCount $findingCount -SeverityCounts $severityCounts
+    Show-MDETTRecap -HtmlPath $htmlPath -CsvPath $csvOutPath -NavigatorPath $navigatorOutPath -FindingCount $findingCount -SeverityCounts $severityCounts
+    Open-MDETTReport -Path $htmlPath
     Wait-MDETTKeypress
 }
 

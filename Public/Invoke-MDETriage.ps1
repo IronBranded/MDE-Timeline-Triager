@@ -39,6 +39,10 @@ function Invoke-MDETriage {
         Switch. Names the two output files `MDETT-<yyyy-MM-dd>-Report.html` /
         `MDETT-<yyyy-MM-dd>-Findings.csv` instead of the fixed traditional names.
         Automatically turned on when -OutputPath is omitted. See New-MDEReport's help.
+    .PARAMETER ExportAttackNavigatorLayer
+        Switch. Also writes a standalone MITRE ATT&CK Navigator v4.5 layer JSON file
+        alongside the HTML/CSV, passed straight through to New-MDEReport -- see its help for
+        the full behavior. Optional, default $false.
 
     .PARAMETER BaselineConfigPath
         Path to a JSON baseline/exclusion config file. Optional; passed through to
@@ -130,7 +134,11 @@ function Invoke-MDETriage {
         [Parameter()]
         [ValidateRange(1, [int]::MaxValue)]
         [int]
-        $ReportSizeThreshold = 5000
+        $ReportSizeThreshold = 5000,
+
+        [Parameter()]
+        [switch]
+        $ExportAttackNavigatorLayer
     )
 
     $baselineNote = if ($BaselineConfigPath) { $BaselineConfigPath } else { '<none>' }
@@ -151,6 +159,7 @@ function Invoke-MDETriage {
         if ($DatedFileNames) { $reportParams['DatedFileNames'] = $true }
         if ($Redact) { $reportParams['Redact'] = $true }
         if ($LocalTime) { $reportParams['LocalTime'] = $true }
+        if ($ExportAttackNavigatorLayer) { $reportParams['ExportAttackNavigatorLayer'] = $true }
 
         Import-MDETimeline -Path $Path | Invoke-MDEDetection @detectionParams | New-MDEReport @reportParams
     }

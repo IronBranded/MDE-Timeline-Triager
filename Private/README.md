@@ -204,6 +204,13 @@ that a detection rule needs to call independently of the full pipeline.
   `MDETimelineTriage.RunSummary`-tagged object `New-MDEReport` separates from findings by its
   `PSTypeName` -- see `CHANGELOG.md` for why the right goalpost is explicitly labeled a
   heuristic rather than a confirmed match.
+- `ConvertTo-MDEAttackNavigatorLayer.ps1` -- builds a MITRE ATT&CK Navigator v4.5 layer JSON
+  string from a finding set, one entry per distinct technique (not per finding, so a
+  technique that fired on multiple findings is deduplicated into one entry scored by its
+  highest CombinedScore), behind `New-MDEReport -ExportAttackNavigatorLayer`. Built against
+  the real, current v4.5 spec fetched directly from MITRE's own repo rather than written
+  from memory -- a schema like this is easy to get subtly wrong in a way that only shows up
+  when a real analyst tries to import it into the actual Navigator tool.
 - `New-MDEReportHtml.ps1` -- reads `Data/ReportTemplate.html` and substitutes in the vendored
   libraries, the escaped/redacted records, and the tree/network/summary data. Uses a single
   forward-only scan across the *original* template rather than sequential `.Replace()` calls

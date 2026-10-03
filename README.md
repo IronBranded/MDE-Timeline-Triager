@@ -92,11 +92,14 @@ cd .\MDE-Timeline-Triager\MDETimelineTriage
 
 Drops into a numbered menu -- Full Triage, decode a command line, validate a config file,
 view the detection catalog, or run a diagnostic check. Full Triage prompts for the CSV path
-and any optional configs, then runs the pipeline with `-OutputPath` omitted, so the report
-and CSV land straight in your Downloads folder (Windows and macOS -- see "Output Location and
-Naming" below) named `MDETT-<date>-Report.html` / `MDETT-<date>-Findings.csv`, and a quick
-severity-count recap prints to the console when it's done. This is a thin wrapper around the
-same cmdlets below -- nothing here is logic that isn't independently Pester-tested.
+and any optional configs, then runs the pipeline with `-OutputPath` omitted, so the report,
+CSV, and an ATT&CK Navigator layer land straight in your Downloads folder (Windows and macOS
+-- see "Output Location and Naming" below) named `MDETT-<date>-Report.html` /
+`MDETT-<date>-Findings.csv` / `MDETT-<date>-AttackNavigatorLayer.json`. A severity-count
+recap prints to the console, and the report opens automatically in your default browser
+(degrades to a one-line notice with the path if that fails, e.g. no GUI available -- never
+crashes the run). This is a thin wrapper around the same cmdlets below -- nothing here is
+logic that isn't independently Pester-tested.
 
 **Scripted / one-liner:**
 
@@ -144,6 +147,7 @@ lineage -> render HTML + CSV) in one call.
 Invoke-MDETriage -Path <String> [-OutputPath <String>] [-DatedFileNames]
     [-BaselineConfigPath <String>] [-CustomIOCConfigPath <String>]
     [-Redact] [-LocalTime] [-ReportSizeThreshold <Int32>]
+    [-ExportAttackNavigatorLayer]
     [-WhatIf] [-Confirm]
 ```
 
@@ -157,6 +161,7 @@ Invoke-MDETriage -Path <String> [-OutputPath <String>] [-DatedFileNames]
 | `Redact` | No | off | Pseudonymize usernames/hostnames in the HTML report. |
 | `LocalTime` | No | off | Add a labeled local-time value alongside UTC. |
 | `ReportSizeThreshold` | No | 5000 | Findings above this cap the interactive views to a top-N-by-score subset (the CSV is always complete). |
+| `ExportAttackNavigatorLayer` | No | off | Also writes a standalone MITRE ATT&CK Navigator v4.5 layer JSON file -- see "Report Views" below. Passed through to `New-MDEReport` unchanged. |
 
 ```powershell
 Invoke-MDETriage -Path .\host01-timeline.csv -OutputPath .\out
@@ -226,6 +231,7 @@ so a report can be re-rendered (e.g. toggling `-Redact`) without re-running dete
 New-MDEReport -InputObject <PSObject[]> -SourcePath <String>
     [-OutputPath <String>] [-DatedFileNames]
     [-Redact] [-LocalTime] [-ReportSizeThreshold <Int32>]
+    [-ExportAttackNavigatorLayer]
     [-WhatIf] [-Confirm]
 ```
 
@@ -235,6 +241,14 @@ $findings | New-MDEReport -SourcePath .\host01-timeline.csv -OutputPath .\out -R
 
 Implements `SupportsShouldProcess`: `-WhatIf` reports which files would be written (flagging
 if that would overwrite an existing report) without writing them.
+
+**`-ExportAttackNavigatorLayer`** also writes a standalone MITRE ATT&CK Navigator v4.5 layer
+JSON file (same naming convention as the HTML/CSV), importable via Navigator's "Open Existing
+Layer" -> "Upload from local". One entry per *distinct* technique across the finding set, not
+one per finding -- a technique that fired on multiple findings is deduplicated into a single
+entry, scored by that technique's highest `CombinedScore` observed, with a comment listing
+which rule(s) contributed. Off by default, for full backward compatibility with existing
+scripted callers; the interactive launcher turns it on automatically.
 
 **Output Location and Naming.** `-OutputPath` is optional. Supplied explicitly, behavior is
 unchanged from earlier versions: fixed `MDETimelineTriage-Report.html`/
@@ -409,6 +423,18 @@ If the finding count exceeds `-ReportSizeThreshold` (default 5000), all four vie
 a top-N-by-`CombinedScore` subset with a banner explaining the rest are in the CSV; the CSV
 always contains the complete, uncapped set.
 
+**A fifth, optional artifact**: `-ExportAttackNavigatorLayer` on `New-MDEReport` or
+`Invoke-MDETriage` writes a standalone MITRE ATT&CK Navigator v4.5 layer JSON file alongside
+the HTML/CSV -- one entry per distinct technique observed (not per finding), scored by that
+technique's highest `CombinedScore`. Import it directly into the official Navigator
+(mitre-attack.github.io/attack-navigator, or self-hosted) via "Open Existing Layer" -> "Upload
+from local" for a technique coverage/heat-map view, useful as a standalone artifact for
+briefings separate from the full HTML report. Built against the real, current v4.5 layer
+format specification -- fetched and read directly rather than written from memory, verified
+against a shared-technique case using real fixtures before being trusted (see
+`CHANGELOG.md`). Off by default on `New-MDEReport`/`Invoke-MDETriage` for backward
+compatibility; the interactive launcher's Full Triage always includes it.
+
 *(Report screenshot placeholder -- insert a screenshot of the Executive Summary and Findings
 Table tabs here once generated against a real export.)*
 
@@ -516,7 +542,7 @@ current-state summary, not the story.
   visual confirmation; a CSS/layout issue wouldn't show up in either jsdom or a syntax check.
 - **`Tests/Invoke-ManualLint.ps1`** (8 of PSScriptAnalyzer's real rule categories,
   AST-based, self-tested against a deliberately bad file before being trusted -- not a
-  PSScriptAnalyzer replacement): **0 findings across all 57 module files.**
+  PSScriptAnalyzer replacement): **0 findings across all 58 module files.**
 - **Real PSScriptAnalyzer has never run, and this is architecturally out of reach in the
   environment this module was built in, not just inconvenient.** Unlike Pester (whose 4.x
   line is pure PowerShell with no compiled component), PSScriptAnalyzer has had a compiled

@@ -259,4 +259,62 @@ Describe 'New-MDEReport' {
             }
         }
     }
+
+    Context 'ATT&CK Navigator layer export (-ExportAttackNavigatorLayer)' {
+        BeforeAll {
+            $script:navSourcePath = Join-Path $fixturesPath 'DeviceProcessEvents-phase7-tests.csv'
+        }
+
+        It 'Does not write a Navigator layer file by default (backward compatibility)' {
+            $outDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "MDENavOff_$([guid]::NewGuid())"
+            try {
+                Import-MDETimeline -Path $navSourcePath -WarningAction SilentlyContinue | Invoke-MDEDetection -WarningAction SilentlyContinue | New-MDEReport -SourcePath $navSourcePath -OutputPath $outDir
+                (Get-ChildItem -Path $outDir -Filter '*AttackNavigatorLayer*').Count | Should -Be 0
+            }
+            finally {
+                if (Test-Path $outDir) { Remove-Item -Path $outDir -Recurse -Force }
+            }
+        }
+
+        It 'Writes a structurally valid v4.5 layer with one entry per distinct technique when the switch is set' {
+            $outDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "MDENavOn_$([guid]::NewGuid())"
+            try {
+                Import-MDETimeline -Path $navSourcePath -WarningAction SilentlyContinue | Invoke-MDEDetection -WarningAction SilentlyContinue | New-MDEReport -SourcePath $navSourcePath -OutputPath $outDir -ExportAttackNavigatorLayer
+                $layerPath = Join-Path $outDir 'MDETimelineTriage-AttackNavigatorLayer.json'
+                Test-Path $layerPath | Should -Be $true
+                $layer = Get-Content $layerPath -Raw | ConvertFrom-Json
+                $layer.domain | Should -Be 'enterprise-attack'
+                $layer.versions.layer | Should -Be '4.5'
+                @($layer.techniques).Count | Should -Be 7
+                ($layer.techniques | Where-Object techniqueID -eq 'T1003.001').tactic | Should -Be 'credential-access'
+            }
+            finally {
+                if (Test-Path $outDir) { Remove-Item -Path $outDir -Recurse -Force }
+            }
+        }
+
+        It 'Deduplicates a technique shared by multiple rules into one entry with the combined rule list and max score' {
+            $procFindings = @(Import-MDETimeline -Path (Join-Path $fixturesPath 'DeviceProcessEvents-detection-tests.csv') -WarningAction SilentlyContinue | Invoke-MDEDetection -WarningAction SilentlyContinue | Where-Object { $_.PSObject.TypeNames -notcontains 'MDETimelineTriage.RunSummary' })
+            $regFindings = @(Import-MDETimeline -Path (Join-Path $fixturesPath 'DeviceRegistryEvents-detection-tests.csv') -WarningAction SilentlyContinue | Invoke-MDEDetection -WarningAction SilentlyContinue | Where-Object { $_.PSObject.TypeNames -notcontains 'MDETimelineTriage.RunSummary' })
+            $outDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "MDENavDedup_$([guid]::NewGuid())"
+            try {
+                $combinedSourcePath = Join-Path $fixturesPath 'DeviceProcessEvents-detection-tests.csv'
+                (@($procFindings) + @($regFindings)) | New-MDEReport -SourcePath $combinedSourcePath -OutputPath $outDir -ExportAttackNavigatorLayer
+                $layer = Get-Content (Join-Path $outDir 'MDETimelineTriage-AttackNavigatorLayer.json') -Raw | ConvertFrom-Json
+                $sharedTechnique = $layer.techniques | Where-Object techniqueID -eq 'T1562.001'
+                $sharedTechnique | Should -Not -BeNullOrEmpty
+                $sharedTechnique.comment | Should -Match 'DEFEVA-002'
+                $sharedTechnique.comment | Should -Match 'DEFEVA-003'
+            }
+            finally {
+                if (Test-Path $outDir) { Remove-Item -Path $outDir -Recurse -Force }
+            }
+        }
+
+        It '-WhatIf with the switch set mentions the Navigator path and creates nothing' {
+            $outDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "MDENavWhatIf_$([guid]::NewGuid())"
+            Import-MDETimeline -Path $navSourcePath -WarningAction SilentlyContinue | Invoke-MDEDetection -WarningAction SilentlyContinue | New-MDEReport -SourcePath $navSourcePath -OutputPath $outDir -ExportAttackNavigatorLayer -WhatIf
+            Test-Path $outDir | Should -Be $false
+        }
+    }
 }

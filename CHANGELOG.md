@@ -4,6 +4,56 @@ All notable changes to MDETimelineTriage are documented in this file. Format loo
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic versioning
 (`major.minor.patch`) as declared in `MDETimelineTriage.psd1`.
 
+## [0.4.0] - 2026-10-03
+
+Two "smaller gaps" closed from an evaluation request, deliberately scoped smaller than the
+larger structural gap (multi-host correlation) flagged in the same evaluation and declined
+for this round.
+
+### Added
+- **Auto-open the report after Full Triage** in `Start-MDETT.ps1` -- `Open-MDETTReport` calls
+  `Start-Process` on the generated HTML path after the console recap. Tested for real in the
+  sandbox this module is verified in, which has no GUI: confirmed it fails there
+  (`Start-Process` needs a GUI file-association mechanism underneath -- the OS shell on
+  Windows/macOS, `xdg-open` on Linux) and degrades gracefully to a one-line notice with the
+  path rather than crashing the launcher. On a real Windows or macOS desktop this opens the
+  browser directly; that specific path remains reasoned-through rather than executed, the
+  same honest distinction already drawn elsewhere in this project for anything this sandbox
+  genuinely cannot run.
+- **MITRE ATT&CK Navigator layer export** -- `New-MDEReport -ExportAttackNavigatorLayer`
+  (passed through unchanged by `Invoke-MDETriage`) writes a standalone v4.5 layer JSON file
+  alongside the HTML/CSV, importable directly into the official ATT&CK Navigator. Built
+  against the real, current v4.5 layer format specification -- fetched and read directly from
+  MITRE's own repository before writing any code, not reconstructed from memory, given how
+  easy a schema like this is to get subtly wrong in a way that only surfaces when someone
+  actually tries to import it. Implemented as a private function
+  (`ConvertTo-MDEAttackNavigatorLayer`) and a new switch on an existing cmdlet, deliberately
+  *not* an 8th public cmdlet -- the original spec explicitly closes the cmdlet surface at
+  exactly 7, and this respects that rather than quietly expanding it because a feature was
+  convenient to add as a standalone command.
+
+  One entry per *distinct* technique across the finding set, not one per finding -- a
+  technique that fired on multiple findings is deduplicated into a single entry, scored by
+  that technique's highest `CombinedScore`, with a comment listing which rule(s) contributed.
+  Verified this specifically with real data, not just by reading the code: two fixtures
+  (`DeviceProcessEvents-detection-tests.csv` and `DeviceRegistryEvents-detection-tests.csv`)
+  genuinely share a technique (T1562.001, tagged by both DEFEVA-002 and DEFEVA-003) --
+  combining their findings confirmed the dedup logic correctly collapses 3 findings across 2
+  rule IDs into one technique entry listing both, not 2 or 3 separate entries.
+
+  Off by default on `New-MDEReport` and `Invoke-MDETriage` for full backward compatibility
+  with existing scripted callers (no existing test needed any change); the interactive
+  launcher's Full Triage always includes it, in keeping with "limit friction" meaning richer
+  default output, not an extra prompt for something cheap to generate.
+- 4 new Pester tests for the Navigator export (off-by-default, valid-layer-when-set, the
+  real dedup case above, and `-WhatIf` behavior) plus the existing launcher-verification
+  approach (piping simulated input through the real script end-to-end) extended to cover
+  the Navigator file appearing in the console recap.
+
+### Verified (real execution)
+- Full regression suite: Pester 138/138 (was 134), manual validation 71/71, lint 0 findings
+  across 58 files (was 57).
+
 ## [0.3.1] - 2026-09-11
 
 A real, significant memory bug found, root-caused, and fixed -- prompted by a question

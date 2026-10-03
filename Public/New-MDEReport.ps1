@@ -94,6 +94,15 @@ function New-MDEReport {
     .PARAMETER ReportSizeThreshold
         Integer. Number of findings above which the HTML report's interactive views render a
         top-N-by-score subset instead of every finding across all four views. Default: 5000.
+    .PARAMETER ExportAttackNavigatorLayer
+        Switch. Also writes a standalone MITRE ATT&CK Navigator v4.5 layer JSON file (same
+        naming convention as the HTML/CSV -- dated or fixed, matching -DatedFileNames),
+        importable directly into the official ATT&CK Navigator
+        (mitre-attack.github.io/attack-navigator) via "Open Existing Layer" -> "Upload from
+        local". One entry per distinct technique observed across the finding set -- not one
+        per finding -- scored by that technique's highest CombinedScore, useful as a
+        standalone artifact for briefings separate from the full HTML report. Optional,
+        default $false.
 
     .EXAMPLE
         Import-MDETimeline -Path .\host01-timeline.csv | Invoke-MDEDetection | New-MDEReport -SourcePath .\host01-timeline.csv -OutputPath .\out
@@ -165,7 +174,11 @@ function New-MDEReport {
         [Parameter()]
         [ValidateRange(1, [int]::MaxValue)]
         [int]
-        $ReportSizeThreshold = 5000
+        $ReportSizeThreshold = 5000,
+
+        [Parameter()]
+        [switch]
+        $ExportAttackNavigatorLayer
     )
 
     begin {
@@ -198,20 +211,24 @@ function New-MDEReport {
             $dateStamp = (Get-Date).ToString('yyyy-MM-dd')
             $htmlPath = Join-Path -Path $resolvedOutputPath -ChildPath "MDETT-$dateStamp-Report.html"
             $csvPath = Join-Path -Path $resolvedOutputPath -ChildPath "MDETT-$dateStamp-Findings.csv"
+            $navigatorPath = Join-Path -Path $resolvedOutputPath -ChildPath "MDETT-$dateStamp-AttackNavigatorLayer.json"
         }
         else {
             $htmlPath = Join-Path -Path $resolvedOutputPath -ChildPath 'MDETimelineTriage-Report.html'
             $csvPath = Join-Path -Path $resolvedOutputPath -ChildPath 'MDETimelineTriage-Findings.csv'
+            $navigatorPath = Join-Path -Path $resolvedOutputPath -ChildPath 'MDETimelineTriage-AttackNavigatorLayer.json'
         }
 
         $htmlExists = Test-Path -Path $htmlPath -PathType Leaf
         $csvExists = Test-Path -Path $csvPath -PathType Leaf
-        $overwriteNote = if ($htmlExists -or $csvExists) { ' (will OVERWRITE existing file(s) at this path)' } else { '' }
+        $navigatorExists = $ExportAttackNavigatorLayer -and (Test-Path -Path $navigatorPath -PathType Leaf)
+        $overwriteNote = if ($htmlExists -or $csvExists -or $navigatorExists) { ' (will OVERWRITE existing file(s) at this path)' } else { '' }
 
         $target = "$($findingsBuffer.Count) finding object(s) from source '$SourcePath'"
         $timeNote = if ($LocalTime) { 'UTC + local time' } else { 'UTC only' }
         $redactNote = if ($Redact) { 'redacted' } else { 'unredacted' }
-        $action = "Write $redactNote HTML report ($timeNote, summarization threshold $ReportSizeThreshold findings) to '$htmlPath' and enriched CSV to '$csvPath'$overwriteNote"
+        $navigatorActionNote = if ($ExportAttackNavigatorLayer) { ", and an ATT&CK Navigator layer to '$navigatorPath'" } else { '' }
+        $action = "Write $redactNote HTML report ($timeNote, summarization threshold $ReportSizeThreshold findings) to '$htmlPath' and enriched CSV to '$csvPath'$navigatorActionNote$overwriteNote"
 
         if (-not $PSCmdlet.ShouldProcess($target, $action)) {
             return
@@ -242,6 +259,14 @@ function New-MDEReport {
         Export-MDEEnrichedCsv -Findings $findingsArray -Path $csvPath -SourceFileHash $sourceHash `
             -SourceFilePath $SourcePath -ProcessingTimestampUtc $processingTimestampUtc
         Write-Verbose "New-MDEReport: wrote enriched CSV to '$csvPath' ($('{0:N0}' -f (Get-Item -LiteralPath $csvPath).Length) bytes)."
+
+        if ($ExportAttackNavigatorLayer) {
+            Write-Verbose 'New-MDEReport: building ATT&CK Navigator layer...'
+            $layerName = "MDETimelineTriage -- $(Split-Path -Path $SourcePath -Leaf) -- $processingTimestampUtc UTC"
+            $layerJson = ConvertTo-MDEAttackNavigatorLayer -Findings $findingsArray -LayerName $layerName
+            [System.IO.File]::WriteAllText($navigatorPath, $layerJson, $utf8NoBom)
+            Write-Verbose "New-MDEReport: wrote ATT&CK Navigator layer to '$navigatorPath' ($('{0:N0}' -f (Get-Item -LiteralPath $navigatorPath).Length) bytes)."
+        }
 
         Write-Verbose 'New-MDEReport: complete.'
     }
